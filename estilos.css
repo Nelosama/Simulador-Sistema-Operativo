@@ -1,0 +1,195 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f0f2f5;
+    color: #222;
+    min-height: 100vh;
+}
+
+.contenedor {
+    width: 90%;
+    max-width: 1100px;
+    margin: 30px auto;
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+h1 {
+    text-align: center;
+    color: #1f3c88;
+    margin-bottom: 10px;
+}
+
+.subtitulo {
+    text-align: center;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+.menu {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+.menu button {
+    padding: 14px 20px;
+    border: none;
+    border-radius: 8px;
+    background: #1f3c88;
+    color: white;
+    font-size: 15px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.menu button:hover {
+    background: #162d66;
+    transform: translateY(-2px);
+}
+
+#contenido {
+    border-top: 2px solid #ddd;
+    padding-top: 25px;
+    min-height: 200px;
+}
+
+#contenido h2 {
+    color: #1f3c88;
+    margin-bottom: 15px;
+}
+
+#contenido p {
+    color: #555;
+    font-size: 16px;
+}
+/* ==========================================
+   FORMULARIOS
+   ========================================== */
+
+.formulario {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+    margin: 25px 0;
+}
+
+.formulario div {
+    display: flex;
+    flex-direction: column;
+}
+
+.formulario label {
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+
+.formulario input,
+select {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 15px;
+}
+
+.boton-agregar {
+    background: #198754 !important;
+}
+
+.boton-secundario {
+    background: #6c757d !important;
+}
+
+
+/* ==========================================
+   TABLA DE PROCESOS
+   ========================================== */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th,
+td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+}
+
+th {
+    background: #1f3c88;
+    color: white;
+}
+
+tr:nth-child(even) {
+    background: #f5f5f5;
+}
+
+
+/* ==========================================
+   MENSAJES
+   ========================================== */
+
+.mensaje-exito {
+    margin-top: 20px;
+    padding: 12px;
+    background: #d1e7dd;
+    border-radius: 6px;
+}
+
+.mensaje-error {
+    margin-top: 20px;
+    padding: 12px;
+    background: #f8d7da;
+    border-radius: 6px;
+}
+/* ==========================================
+   BOTONES INTERNOS
+   ========================================== */
+
+#contenido button {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 6px;
+    background: #1f3c88;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    margin: 5px 5px 15px 0;
+}
+
+#contenido button:hover {
+    background: #162d66;
+}
+
+
+/* ==========================================
+   SECUENCIA DE PROCESOS
+   ========================================== */
+
+.secuencia {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 15px 0 25px 0;
+}
+
+.proceso-secuencia {
+    display: inline-block;
+    padding: 12px 20px;
+    background: #1f3c88;
+    color: white;
+    border-radius: 6px;
+    font-weight: bold;
+}

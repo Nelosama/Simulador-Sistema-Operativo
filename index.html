@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Simulador de Sistema Operativo</title>
+
+    <link rel="stylesheet" href="estilos.css">
+</head>
+
+<body>
+
+    <div class="contenedor">
+
+        <h1>Simulador de Sistema Operativo</h1>
+
+        <p class="subtitulo">
+            Planificador de Procesos y Administrador de Memoria
+        </p>
+
+        <div class="menu">
+
+            <button onclick="mostrarSeccion('programas')">
+                Configuración de programas
+            </button>
+
+            <button onclick="mostrarSeccion('planificador')">
+                Lista de ejecución
+            </button>
+
+            <button onclick="mostrarSeccion('sistema')">
+                Configuración del SO
+            </button>
+
+            <button onclick="mostrarSeccion('mmu')">
+                Emular MMU
+            </button>
+
+            <button onclick="salir()">
+                Salir
+            </button>
+
+        </div>
+
+        <div id="contenido">
+
+            <h2>Bienvenido</h2>
+
+            <p>
+                Seleccione una opción del menú para comenzar.
+            </p>
+
+        </div>
+
+    </div>
+
+    <script src="main.js"></script>
+
+</body>
+</html>
