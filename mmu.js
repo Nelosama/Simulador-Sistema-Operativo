@@ -784,6 +784,12 @@ export function ejecutarMRU(
                 marcos[marcoVacio] = pagina;
             } else {
                 let posicionReemplazo = marcos.indexOf(ultimoUso);
+                // Análisis de condición:
+                // 'ultimoUso' representa la página accedida o cargada más recientemente.
+                // Dado el flujo del algoritmo MRU, 'ultimoUso' siempre está en uno de los marcos de memoria
+                // (ya sea porque fue cargada en un fallo previo o accedida en un acierto).
+                // Por lo tanto, 'marcos.indexOf(ultimoUso)' nunca retornará -1 en la práctica,
+                // haciendo que la condición 'posicionReemplazo === -1' sea inalcanzable.
                 if (posicionReemplazo === -1) {
                     posicionReemplazo = 0;
                 }
