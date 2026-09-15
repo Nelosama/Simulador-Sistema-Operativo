@@ -15,6 +15,13 @@ export function agregarProceso() {
         return;
     }
 
+    const procesosExistentes = obtenerListaProcesos();
+    const existeDuplicado = procesosExistentes.some(p => p.id === id);
+    if (existeDuplicado) {
+        alert("Ya existe un proceso con el mismo ID. Ingrese un ID único.");
+        return;
+    }
+
     const proceso = {
         id: id,
         nombre: nombre,
