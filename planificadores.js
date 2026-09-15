@@ -101,7 +101,12 @@ export function ejecutarPlanificador() {
 
 
             disponibles.sort(
-                (a, b) => a.duracion - b.duracion
+                (a, b) => {
+                    if (a.duracion !== b.duracion) {
+                        return a.duracion - b.duracion;
+                    }
+                    return a.llegada - b.llegada;
+                }
             );
 
 

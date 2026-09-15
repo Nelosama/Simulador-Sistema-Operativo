@@ -3,7 +3,6 @@ import { agregarProceso, limpiarProcesos } from './procesos.js';
 import { ejecutarPlanificador } from './planificadores.js';
 import { ejecutarMMU } from './mmu.js';
 
-// Exponer funciones necesarias en window para los handlers inline (onclick) del HTML
 window.mostrarSeccion = mostrarSeccion;
 window.salir = salir;
 window.agregarProceso = agregarProceso;
