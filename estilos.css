@@ -193,3 +193,54 @@ tr:nth-child(even) {
     border-radius: 6px;
     font-weight: bold;
 }
+
+/* ==========================================
+   MATRIZ HORIZONTAL MMU
+   ========================================== */
+
+.tabla-mmu-contenedor {
+    width: 100%;
+    overflow-x: auto;
+    margin: 20px 0;
+}
+
+.tabla-mmu-horizontal {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 600px;
+}
+
+.tabla-mmu-horizontal th,
+.tabla-mmu-horizontal td {
+    border: 1px solid #dcdcdc;
+    padding: 12px 14px;
+    text-align: center;
+    font-size: 15px;
+}
+
+.tabla-mmu-horizontal .encabezado-fila {
+    background: #152852;
+    color: white;
+    font-weight: bold;
+    width: 140px;
+    text-align: left;
+    padding-left: 15px;
+}
+
+.tabla-mmu-horizontal .celda-referencia {
+    background: #fff8dc;
+    font-weight: bold;
+    color: #333;
+}
+
+.tabla-mmu-horizontal .fallo-simbolo {
+    color: #dc3545;
+    font-weight: bold;
+    background: #f8d7da;
+}
+
+.tabla-mmu-horizontal .hit-simbolo {
+    color: #198754;
+    font-weight: bold;
+    background: #d1e7dd;
+}
