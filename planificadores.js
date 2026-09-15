@@ -1,4 +1,4 @@
-import { obtenerListaProcesos, guardarSecuencia, configuracionSO } from "./estado.js";
+import { obtenerListaProcesos, guardarSecuencia, configuracionSO, ultimoResultadoMMU } from "./estado.js";
 
 export function ejecutarPlanificador() {
 
@@ -11,8 +11,6 @@ export function ejecutarPlanificador() {
 
     const procesos = obtenerListaProcesos();
 
-    // Verificar que existan procesos
-
     if (procesos.length === 0) {
 
         resultado.innerHTML = `
@@ -24,10 +22,6 @@ export function ejecutarPlanificador() {
         return;
     }
 
-
-    // ==========================================
-    // FCFS
-    // ==========================================
 
     if (algoritmo === "FCFS") {
 
@@ -58,7 +52,9 @@ export function ejecutarPlanificador() {
                 llegada: proceso.llegada,
                 duracion: proceso.duracion,
                 inicio: inicio,
-                fin: fin
+                fin: fin,
+                ejecutado: proceso.duracion,
+                restante: 0
 
             });
 
@@ -75,10 +71,6 @@ export function ejecutarPlanificador() {
 
     }
 
-
-    // ==========================================
-    // SJF
-    // ==========================================
 
     else if (algoritmo === "SJF") {
 
@@ -127,7 +119,9 @@ export function ejecutarPlanificador() {
                 llegada: proceso.llegada,
                 duracion: proceso.duracion,
                 inicio: inicio,
-                fin: fin
+                fin: fin,
+                ejecutado: proceso.duracion,
+                restante: 0
 
             });
 
@@ -149,10 +143,6 @@ export function ejecutarPlanificador() {
 
     }
 
-
-    // ==========================================
-    // ROUND ROBIN
-    // ==========================================
 
     else if (algoritmo === "RR") {
 
@@ -288,10 +278,6 @@ export function ejecutarPlanificador() {
     }
 
 
-    // ==========================================
-    // PRIORIDAD
-    // ==========================================
-
     else if (algoritmo === "PRIORIDAD") {
 
         let pendientes = [...procesos];
@@ -303,15 +289,10 @@ export function ejecutarPlanificador() {
 
         while (pendientes.length > 0) {
 
-            // Buscar procesos que ya llegaron
-
             let disponibles = pendientes.filter(
                 proceso => proceso.llegada <= tiempoActual
             );
 
-
-            // Si no ha llegado ningún proceso,
-            // avanzar el reloj
 
             if (disponibles.length === 0) {
 
@@ -325,13 +306,8 @@ export function ejecutarPlanificador() {
             }
 
 
-            // Ordenar por prioridad
-            // 1 = mayor prioridad
-
             disponibles.sort(
                 (a, b) => {
-
-                    // Primero comparar prioridad
 
                     if (a.prioridad !== b.prioridad) {
 
@@ -339,16 +315,11 @@ export function ejecutarPlanificador() {
 
                     }
 
-                    // Si tienen la misma prioridad,
-                    // utilizar primero el que llegó antes
-
                     return a.llegada - b.llegada;
 
                 }
             );
 
-
-            // Seleccionar el proceso de mayor prioridad
 
             const proceso = disponibles[0];
 
@@ -359,8 +330,6 @@ export function ejecutarPlanificador() {
                 inicio + proceso.duracion;
 
 
-            // Guardar resultado
-
             resultadoPlan.push({
 
                 id: proceso.id,
@@ -369,17 +338,15 @@ export function ejecutarPlanificador() {
                 duracion: proceso.duracion,
                 prioridad: proceso.prioridad,
                 inicio: inicio,
-                fin: fin
+                fin: fin,
+                ejecutado: proceso.duracion,
+                restante: 0
 
             });
 
 
-            // Avanzar el reloj
-
             tiempoActual = fin;
 
-
-            // Eliminar proceso terminado
 
             pendientes = pendientes.filter(
                 p => p.id !== proceso.id
@@ -393,9 +360,6 @@ export function ejecutarPlanificador() {
         );
 
     }
-// ==========================================
-// SORTEO
-// ==========================================
 
 else if (algoritmo === "SORTEO") {
 
@@ -406,20 +370,12 @@ else if (algoritmo === "SORTEO") {
     let tiempoActual = 0;
 
 
-    // Mientras existan procesos pendientes
-
     while (pendientes.length > 0) {
-
-
-        // Buscar procesos que ya llegaron
 
         let disponibles = pendientes.filter(
             proceso => proceso.llegada <= tiempoActual
         );
 
-
-        // Si todavía no ha llegado ningún proceso,
-        // avanzar el reloj
 
         if (disponibles.length === 0) {
 
@@ -433,10 +389,6 @@ else if (algoritmo === "SORTEO") {
         }
 
 
-        // ==========================================
-        // CALCULAR TOTAL DE BOLETOS
-        // ==========================================
-
         const totalBoletos =
             disponibles.reduce(
                 (total, proceso) =>
@@ -445,17 +397,11 @@ else if (algoritmo === "SORTEO") {
             );
 
 
-        // Generar número aleatorio
-
         const numeroSorteo =
             Math.floor(
                 Math.random() * totalBoletos
             ) + 1;
 
-
-        // ==========================================
-        // DETERMINAR GANADOR
-        // ==========================================
 
         let acumulado = 0;
 
@@ -478,10 +424,6 @@ else if (algoritmo === "SORTEO") {
         }
 
 
-        // ==========================================
-        // EJECUTAR GANADOR
-        // ==========================================
-
         const inicio = tiempoActual;
 
         const fin =
@@ -498,17 +440,15 @@ else if (algoritmo === "SORTEO") {
             sorteo: numeroSorteo,
             totalBoletos: totalBoletos,
             inicio: inicio,
-            fin: fin
+            fin: fin,
+            ejecutado: ganador.duracion,
+            restante: 0
 
         });
 
 
-        // Avanzar el reloj
-
         tiempoActual = fin;
 
-
-        // Eliminar proceso terminado
 
         pendientes = pendientes.filter(
             proceso => proceso.id !== ganador.id
@@ -522,10 +462,6 @@ else if (algoritmo === "SORTEO") {
     );
 
 }
-
-    // ==========================================
-    // OTROS ALGORITMOS
-    // ==========================================
 
     else {
 
@@ -541,446 +477,338 @@ else if (algoritmo === "SORTEO") {
     }
 
 }
-// ==========================================
-// MOSTRAR RESULTADO POR PRIORIDAD
-// ==========================================
+
+export function renderizarGanttVisual(resultadoPlan) {
+    if (!resultadoPlan || resultadoPlan.length === 0) return '';
+
+    const tiempoTotal = Math.max(...resultadoPlan.map(t => t.fin));
+    const listaProcesosFormato = [];
+
+    resultadoPlan.forEach(t => {
+        if (!listaProcesosFormato.includes(t.id)) {
+            listaProcesosFormato.push(t.id);
+        }
+    });
+
+    let ganttHtml = `
+        <div class="panel-simulacion">
+            <h3>Diagrama de Gantt</h3>
+            <div class="gantt-contenedor">
+                <div class="gantt-wrapper">
+    `;
+
+    listaProcesosFormato.forEach(procId => {
+        const turnosProceso = resultadoPlan.filter(t => t.id === procId);
+        ganttHtml += `
+            <div class="gantt-fila-proceso">
+                <div class="gantt-label-proceso">${procId}</div>
+                <div class="gantt-pista">
+        `;
+
+        turnosProceso.forEach(t => {
+            const leftPct = (t.inicio / tiempoTotal) * 100;
+            const widthPct = ((t.fin - t.inicio) / tiempoTotal) * 100;
+            const tooltipText = `Proceso: ${t.id} &#10;Inicio: ${t.inicio} &#10;Fin: ${t.fin} &#10;Tiempo restante: ${t.restante !== undefined ? t.restante : 0}`;
+
+            ganttHtml += `
+                <div class="gantt-bloque gantt-bloque-ejecutando"
+                     style="left: ${leftPct}%; width: ${widthPct}%;"
+                     title="Proceso: ${t.id}&#10;Inicio: ${t.inicio}&#10;Fin: ${t.fin}&#10;Tiempo restante: ${t.restante !== undefined ? t.restante : 0}">
+                    ${t.id} (${t.inicio}-${t.fin})
+                </div>
+            `;
+        });
+
+        ganttHtml += `
+                </div>
+            </div>
+        `;
+    });
+
+    ganttHtml += `
+                <div class="gantt-eje-tiempo">
+    `;
+
+    for (let t = 0; t <= tiempoTotal; t++) {
+        const pct = (t / tiempoTotal) * 100;
+        ganttHtml += `
+            <div class="gantt-marca-tiempo" style="left: ${pct}%;">${t}</div>
+        `;
+    }
+
+    ganttHtml += `
+                </div>
+    `;
+
+    if (ultimoResultadoMMU && ultimoResultadoMMU.pasos && ultimoResultadoMMU.pasos.length > 0) {
+        const totalRefs = ultimoResultadoMMU.pasos.length;
+        ganttHtml += `
+            <div class="mmu-eje-fila">
+                <div class="mmu-eje-label">MMU</div>
+                <div class="mmu-eje-pista">
+        `;
+
+        ultimoResultadoMMU.pasos.forEach((paso, idx) => {
+            const pct = (idx / (totalRefs - 1 || 1)) * 100;
+            const esFallo = paso.resultado === "Fallo de página";
+            const claseMarcador = esFallo ? "mmu-marcador-fallo" : "mmu-marcador-acierto";
+            const tooltipText = `Ref #${idx + 1}: Pag ${paso.pagina} (${paso.resultado})`;
+
+            ganttHtml += `
+                <div class="mmu-marcador-ref ${claseMarcador}"
+                     style="left: ${pct}%;"
+                     title="${tooltipText}">
+                    P${paso.pagina}
+                </div>
+            `;
+        });
+
+        ganttHtml += `
+                </div>
+            </div>
+        `;
+    }
+
+    ganttHtml += `
+                </div>
+            </div>
+        </div>
+    `;
+
+    return ganttHtml;
+}
 
 export function mostrarResultadoPrioridad(resultadoPlan) {
+    const resultado = document.getElementById("resultadoPlanificador");
 
-    const resultado =
-        document.getElementById("resultadoPlanificador");
-
+    let ganttHtml = renderizarGanttVisual(resultadoPlan);
 
     let html = `
+        ${ganttHtml}
 
-        <h3>Resultado por Prioridad</h3>
-
-        <p>
-            Regla utilizada:
-            <strong>1 = mayor prioridad</strong>
-        </p>
-
-        <p>
-            Orden de ejecución:
-        </p>
-
-        <div class="secuencia">
-
+        <details class="detalle-ejecucion">
+            <summary>Ver Detalle de Ejecución</summary>
+            <div class="detalle-contenido">
+                <p>Regla utilizada: <strong>1 = mayor prioridad</strong></p>
+                <p>Orden de ejecución:</p>
+                <div class="secuencia">
     `;
 
-
-    // Mostrar secuencia
-
     resultadoPlan.forEach(proceso => {
-
-        html += `
-
-            <span class="proceso-secuencia">
-                ${proceso.id}
-            </span>
-
-        `;
-
+        html += `<span class="proceso-secuencia dato-mono">${proceso.id}</span> `;
     });
 
-
     html += `
-
-        </div>
-
-        <h3>Detalle de ejecución</h3>
-
-        <table>
-
-            <thead>
-
-                <tr>
-
-                    <th>Proceso</th>
-                    <th>Llegada</th>
-                    <th>Duración</th>
-                    <th>Prioridad</th>
-                    <th>Inicio</th>
-                    <th>Fin</th>
-
-                </tr>
-
-            </thead>
-
-            <tbody>
-
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Proceso</th>
+                            <th>Llegada</th>
+                            <th>Duración</th>
+                            <th>Prioridad</th>
+                            <th>Inicio</th>
+                            <th>Fin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
     `;
 
-
-    // Crear filas
-
     resultadoPlan.forEach(proceso => {
-
         html += `
-
             <tr>
-
-                <td>${proceso.id}</td>
-
-                <td>${proceso.llegada}</td>
-
-                <td>${proceso.duracion}</td>
-
-                <td>${proceso.prioridad}</td>
-
-                <td>${proceso.inicio}</td>
-
-                <td>${proceso.fin}</td>
-
+                <td class="dato-mono">${proceso.id}</td>
+                <td class="dato-mono">${proceso.llegada}</td>
+                <td class="dato-mono">${proceso.duracion}</td>
+                <td class="dato-mono">${proceso.prioridad}</td>
+                <td class="dato-mono">${proceso.inicio}</td>
+                <td class="dato-mono">${proceso.fin}</td>
             </tr>
-
         `;
-
     });
 
-
     html += `
-
-            </tbody>
-
-        </table>
-
+                    </tbody>
+                </table>
+            </div>
+        </details>
     `;
-
 
     resultado.innerHTML = html;
-
 }
-// ==========================================
-// MOSTRAR RESULTADO SORTEO
-// ==========================================
 
 export function mostrarResultadoSorteo(resultadoPlan) {
+    const resultado = document.getElementById("resultadoPlanificador");
 
-    const resultado =
-        document.getElementById("resultadoPlanificador");
-
+    let ganttHtml = renderizarGanttVisual(resultadoPlan);
 
     let html = `
+        ${ganttHtml}
 
-        <h3>Resultado por Sorteo</h3>
-
-        <p>
-            Cada proceso participa con sus boletos.
-            El ganador se selecciona aleatoriamente.
-        </p>
-
-        <p>
-            Orden de ejecución:
-        </p>
-
-        <div class="secuencia">
-
+        <details class="detalle-ejecucion">
+            <summary>Ver Detalle de los Sorteos</summary>
+            <div class="detalle-contenido">
+                <p>Cada proceso participa con sus boletos. El ganador se selecciona aleatoriamente.</p>
+                <p>Orden de ejecución:</p>
+                <div class="secuencia">
     `;
-
-
-    // Mostrar secuencia
 
     resultadoPlan.forEach(proceso => {
-
-        html += `
-
-            <span class="proceso-secuencia">
-                ${proceso.id}
-            </span>
-
-        `;
-
+        html += `<span class="proceso-secuencia dato-mono">${proceso.id}</span> `;
     });
 
-
     html += `
-
-        </div>
-
-        <h3>Detalle de los sorteos</h3>
-
-        <table>
-
-            <thead>
-
-                <tr>
-
-                    <th>Turno</th>
-                    <th>Proceso ganador</th>
-                    <th>Boletos</th>
-                    <th>Total boletos</th>
-                    <th>Número sorteado</th>
-                    <th>Inicio</th>
-                    <th>Fin</th>
-
-                </tr>
-
-            </thead>
-
-            <tbody>
-
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Turno</th>
+                            <th>Proceso ganador</th>
+                            <th>Boletos</th>
+                            <th>Total boletos</th>
+                            <th>Número sorteado</th>
+                            <th>Inicio</th>
+                            <th>Fin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
     `;
 
-
-    // Crear filas
-
-    resultadoPlan.forEach(
-        (proceso, indice) => {
-
-            html += `
-
-                <tr>
-
-                    <td>${indice + 1}</td>
-
-                    <td>${proceso.id}</td>
-
-                    <td>${proceso.boletos}</td>
-
-                    <td>${proceso.totalBoletos}</td>
-
-                    <td>${proceso.sorteo}</td>
-
-                    <td>${proceso.inicio}</td>
-
-                    <td>${proceso.fin}</td>
-
-                </tr>
-
-            `;
-
-        }
-    );
-
+    resultadoPlan.forEach((proceso, indice) => {
+        html += `
+            <tr>
+                <td class="dato-mono">${indice + 1}</td>
+                <td class="dato-mono">${proceso.id}</td>
+                <td class="dato-mono">${proceso.boletos}</td>
+                <td class="dato-mono">${proceso.totalBoletos}</td>
+                <td class="dato-mono">${proceso.sorteo}</td>
+                <td class="dato-mono">${proceso.inicio}</td>
+                <td class="dato-mono">${proceso.fin}</td>
+            </tr>
+        `;
+    });
 
     html += `
-
-            </tbody>
-
-        </table>
-
+                    </tbody>
+                </table>
+            </div>
+        </details>
     `;
-
 
     resultado.innerHTML = html;
-
 }
-// ==========================================
-// MOSTRAR RESULTADO ROUND ROBIN
-// ==========================================
 
-export function mostrarResultadoRoundRobin(
-    resultadoPlan,
-    quantum
-) {
+export function mostrarResultadoRoundRobin(resultadoPlan, quantum) {
+    const resultado = document.getElementById("resultadoPlanificador");
 
-    const resultado =
-        document.getElementById("resultadoPlanificador");
-
+    let ganttHtml = renderizarGanttVisual(resultadoPlan);
 
     let html = `
+        ${ganttHtml}
 
-        <h3>Resultado Round Robin</h3>
-
-        <p>
-            Quantum utilizado:
-            <strong>${quantum}</strong>
-        </p>
-
-        <p>
-            Secuencia de ejecución:
-        </p>
-
-        <div class="secuencia">
-
+        <details class="detalle-ejecucion">
+            <summary>Ver Detalle de Ejecución (Round Robin)</summary>
+            <div class="detalle-contenido">
+                <p>Quantum utilizado: <strong class="dato-mono">${quantum}</strong></p>
+                <p>Secuencia de ejecución:</p>
+                <div class="secuencia">
     `;
-
-
-    // Mostrar cada turno
 
     resultadoPlan.forEach(turno => {
-
-        html += `
-
-            <span class="proceso-secuencia">
-                ${turno.id}
-            </span>
-
-        `;
-
+        html += `<span class="proceso-secuencia dato-mono">${turno.id}</span> `;
     });
 
-
     html += `
-
-        </div>
-
-        <h3>Detalle de ejecución</h3>
-
-        <table>
-
-            <thead>
-
-                <tr>
-
-                    <th>Turno</th>
-                    <th>Proceso</th>
-                    <th>Inicio</th>
-                    <th>Fin</th>
-                    <th>Ejecutado</th>
-                    <th>Tiempo restante</th>
-
-                </tr>
-
-            </thead>
-
-            <tbody>
-
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Turno</th>
+                            <th>Proceso</th>
+                            <th>Inicio</th>
+                            <th>Fin</th>
+                            <th>Ejecutado</th>
+                            <th>Tiempo restante</th>
+                        </tr>
+                    </thead>
+                    <tbody>
     `;
-
-
-    // Crear las filas
 
     resultadoPlan.forEach((turno, indice) => {
-
         html += `
-
             <tr>
-
-                <td>${indice + 1}</td>
-
-                <td>${turno.id}</td>
-
-                <td>${turno.inicio}</td>
-
-                <td>${turno.fin}</td>
-
-                <td>${turno.ejecutado}</td>
-
-                <td>${turno.restante}</td>
-
+                <td class="dato-mono">${indice + 1}</td>
+                <td class="dato-mono">${turno.id}</td>
+                <td class="dato-mono">${turno.inicio}</td>
+                <td class="dato-mono">${turno.fin}</td>
+                <td class="dato-mono">${turno.ejecutado}</td>
+                <td class="dato-mono">${turno.restante}</td>
             </tr>
-
         `;
-
     });
 
-
     html += `
-
-            </tbody>
-
-        </table>
-
+                    </tbody>
+                </table>
+            </div>
+        </details>
     `;
 
-
     resultado.innerHTML = html;
-
 }
 
-// ==========================================
-// MOSTRAR RESULTADO DE PLANIFICACIÓN
-// ==========================================
+export function mostrarResultadoPlanificacion(resultadoPlan, nombreAlgoritmo) {
+    const resultado = document.getElementById("resultadoPlanificador");
 
-export function mostrarResultadoPlanificacion(
-    resultadoPlan,
-    nombreAlgoritmo
-) {
-
-    const resultado =
-        document.getElementById("resultadoPlanificador");
-
+    let ganttHtml = renderizarGanttVisual(resultadoPlan);
 
     let html = `
+        ${ganttHtml}
 
-        <h3>Resultado ${nombreAlgoritmo}</h3>
-
-        <p>
-            Orden de ejecución:
-        </p>
-
-        <div class="secuencia">
+        <details class="detalle-ejecucion">
+            <summary>Ver Detalle de Ejecución (${nombreAlgoritmo})</summary>
+            <div class="detalle-contenido">
+                <p>Orden de ejecución:</p>
+                <div class="secuencia">
     `;
 
-
-    // Mostrar la secuencia
-
     resultadoPlan.forEach(proceso => {
-
-        html += `
-
-            <span class="proceso-secuencia">
-                ${proceso.id}
-            </span>
-
-        `;
-
+        html += `<span class="proceso-secuencia dato-mono">${proceso.id}</span> `;
     });
 
-
     html += `
-
-        </div>
-
-        <h3>Detalle de ejecución</h3>
-
-        <table>
-
-            <thead>
-
-                <tr>
-
-                    <th>Proceso</th>
-                    <th>Llegada</th>
-                    <th>Duración</th>
-                    <th>Inicio</th>
-                    <th>Fin</th>
-
-                </tr>
-
-            </thead>
-
-            <tbody>
-
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Proceso</th>
+                            <th>Llegada</th>
+                            <th>Duración</th>
+                            <th>Inicio</th>
+                            <th>Fin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
     `;
 
-
-    // Crear filas
-
     resultadoPlan.forEach(proceso => {
-
         html += `
-
             <tr>
-
-                <td>${proceso.id}</td>
-                <td>${proceso.llegada}</td>
-                <td>${proceso.duracion}</td>
-                <td>${proceso.inicio}</td>
-                <td>${proceso.fin}</td>
-
+                <td class="dato-mono">${proceso.id}</td>
+                <td class="dato-mono">${proceso.llegada}</td>
+                <td class="dato-mono">${proceso.duracion}</td>
+                <td class="dato-mono">${proceso.inicio}</td>
+                <td class="dato-mono">${proceso.fin}</td>
             </tr>
-
         `;
-
     });
 
-
     html += `
-
-            </tbody>
-
-        </table>
-
+                    </tbody>
+                </table>
+            </div>
+        </details>
     `;
-
 
     resultado.innerHTML = html;
 }
-
-
-// ==========================================
-// MMU
-// ==========================================

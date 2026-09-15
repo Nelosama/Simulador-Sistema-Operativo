@@ -3,59 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Simulador de Sistema Operativo</title>
-
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="estilos.css">
 </head>
-
 <body>
-
     <div class="contenedor">
+        <header class="encabezado-principal">
+            <h1>Simulador de Sistema Operativo</h1>
+            <p class="subtitulo">Planificador de Procesos y Administrador de Memoria</p>
+        </header>
 
-        <h1>Simulador de Sistema Operativo</h1>
+        <nav class="menu">
+            <button onclick="mostrarSeccion('programas')">Configuración de programas</button>
+            <button onclick="mostrarSeccion('planificador')">Lista de ejecución</button>
+            <button onclick="mostrarSeccion('sistema')">Configuración del SO</button>
+            <button onclick="mostrarSeccion('mmu')">Emular MMU</button>
+            <button onclick="salir()">Salir</button>
+        </nav>
 
-        <p class="subtitulo">
-            Planificador de Procesos y Administrador de Memoria
-        </p>
-
-        <div class="menu">
-
-            <button onclick="mostrarSeccion('programas')">
-                Configuración de programas
-            </button>
-
-            <button onclick="mostrarSeccion('planificador')">
-                Lista de ejecución
-            </button>
-
-            <button onclick="mostrarSeccion('sistema')">
-                Configuración del SO
-            </button>
-
-            <button onclick="mostrarSeccion('mmu')">
-                Emular MMU
-            </button>
-
-            <button onclick="salir()">
-                Salir
-            </button>
-
-        </div>
-
-        <div id="contenido">
-
+        <main id="contenido">
             <h2>Bienvenido</h2>
-
-            <p>
-                Seleccione una opción del menú para comenzar.
-            </p>
-
-        </div>
-
+            <p>Seleccione una opción del menú para comenzar.</p>
+        </main>
     </div>
-
     <script type="module" src="main.js"></script>
-
 </body>
 </html>

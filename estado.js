@@ -14,13 +14,16 @@ export function guardarProcesosEnLocalStorage() {
 }
 
 export let ultimaSecuenciaEjecucion = [];
+export let ultimoResultadoPlan = [];
+export let ultimoResultadoMMU = null;
 
 export function guardarSecuencia(resultadoPlan) {
     ultimaSecuenciaEjecucion = resultadoPlan.map(turno => turno.id);
+    ultimoResultadoPlan = resultadoPlan;
 }
 
-export function obtenerUltimaSecuenciaEjecucion() {
-    return ultimaSecuenciaEjecucion;
+export function guardarResultadoMMU(resultado) {
+    ultimoResultadoMMU = resultado;
 }
 
 export let configuracionSO = JSON.parse(
