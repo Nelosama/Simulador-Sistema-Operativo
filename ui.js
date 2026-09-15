@@ -11,7 +11,7 @@ export function actualizarTabla() {
 
     if (lista.length === 0) {
         tabla.innerHTML = `
-            <p>No hay procesos registrados.</p>
+            <p class="texto-secundario">No hay procesos registrados.</p>
         `;
         return;
     }
@@ -37,14 +37,14 @@ export function actualizarTabla() {
     lista.forEach(proceso => {
         html += `
             <tr>
-                <td>${proceso.id}</td>
+                <td class="dato-mono">${proceso.id}</td>
                 <td>${proceso.nombre}</td>
-                <td>${proceso.llegada}</td>
-                <td>${proceso.duracion}</td>
-                <td>${proceso.prioridad}</td>
-                <td>${proceso.boletos}</td>
-                <td>${proceso.paginasRequeridas || 1}</td>
-                <td>${proceso.quantumRestante !== undefined ? proceso.quantumRestante : configuracionSO.quantum}</td>
+                <td class="dato-mono">${proceso.llegada}</td>
+                <td class="dato-mono">${proceso.duracion}</td>
+                <td class="dato-mono">${proceso.prioridad}</td>
+                <td class="dato-mono">${proceso.boletos}</td>
+                <td class="dato-mono">${proceso.paginasRequeridas || 1}</td>
+                <td class="dato-mono">${proceso.quantumRestante !== undefined ? proceso.quantumRestante : configuracionSO.quantum}</td>
                 <td>${proceso.estado}</td>
             </tr>
         `;
@@ -81,9 +81,9 @@ export function renderizarTablaPaginas() {
         const estado = i <= configuracionSO.marcosFisicos ? "En Memoria Principal" : "No Cargada";
         html += `
             <tr>
-                <td>Página ${i}</td>
+                <td class="dato-mono">Página ${i}</td>
                 <td>${estado}</td>
-                <td>${marcoAsignado}</td>
+                <td class="dato-mono">${marcoAsignado}</td>
             </tr>
         `;
     }
@@ -110,24 +110,14 @@ export function guardarConfiguracion() {
     renderizarTablaPaginas();
 
     document.getElementById("mensajeConfiguracion").innerHTML = `
-        <p class="mensaje-exito">
-            Configuración guardada correctamente.
-        </p>
-        <p>
-            Quantum: ${configuracionSO.quantum}
-        </p>
-        <p>
-            Páginas virtuales: ${configuracionSO.paginasVirtuales}
-        </p>
-        <p>
-            Marcos físicos: ${configuracionSO.marcosFisicos}
-        </p>
-        <p>
-            Espacio de Disco Duro: ${configuracionSO.espacioDisco} bloques
-        </p>
-        <p>
-            Algoritmo MMU predeterminado: ${configuracionSO.algoritmoPredeterminado}
-        </p>
+        <div class="mensaje-exito">
+            <p><strong>Configuración guardada correctamente.</strong></p>
+            <p>Quantum: <span class="dato-mono">${configuracionSO.quantum}</span></p>
+            <p>Páginas virtuales: <span class="dato-mono">${configuracionSO.paginasVirtuales}</span></p>
+            <p>Marcos físicos: <span class="dato-mono">${configuracionSO.marcosFisicos}</span></p>
+            <p>Espacio de Disco Duro: <span class="dato-mono">${configuracionSO.espacioDisco}</span> bloques</p>
+            <p>Algoritmo MMU predeterminado: <span>${configuracionSO.algoritmoPredeterminado}</span></p>
+        </div>
     `;
 }
 
@@ -138,7 +128,7 @@ export function mostrarSeccion(seccion) {
         contenido.innerHTML = `
             <h2>Configuración de programas</h2>
 
-            <p>
+            <p class="subtitulo-seccion">
                 Agregue los procesos que serán ejecutados por el sistema operativo.
             </p>
 
@@ -146,7 +136,7 @@ export function mostrarSeccion(seccion) {
 
                 <div>
                     <label>ID del proceso:</label>
-                    <input type="text" id="idProceso" placeholder="Ejemplo: P1">
+                    <input type="text" id="idProceso" placeholder="Ejemplo: P1" class="dato-mono">
                 </div>
 
                 <div>
@@ -156,43 +146,45 @@ export function mostrarSeccion(seccion) {
 
                 <div>
                     <label>Tiempo de llegada:</label>
-                    <input type="number" id="llegadaProceso" min="0" value="0">
+                    <input type="number" id="llegadaProceso" min="0" value="0" class="dato-mono">
                 </div>
 
                 <div>
                     <label>Tiempo de ejecución:</label>
-                    <input type="number" id="duracionProceso" min="1" value="1">
+                    <input type="number" id="duracionProceso" min="1" value="1" class="dato-mono">
                 </div>
 
                 <div>
                     <label>Prioridad:</label>
-                    <input type="number" id="prioridadProceso" min="1" value="1">
+                    <input type="number" id="prioridadProceso" min="1" value="1" class="dato-mono">
                 </div>
 
                 <div>
                     <label>Boletos (sorteo):</label>
-                    <input type="number" id="boletosProceso" min="1" value="10">
+                    <input type="number" id="boletosProceso" min="1" value="10" class="dato-mono">
                 </div>
 
                 <div>
                     <label>Páginas requeridas:</label>
-                    <input type="number" id="paginasProceso" min="1" value="1">
+                    <input type="number" id="paginasProceso" min="1" value="1" class="dato-mono">
                 </div>
 
             </div>
 
-            <button class="boton-agregar" onclick="agregarProceso()">
-                Agregar proceso
-            </button>
+            <div class="acciones-formulario">
+                <button class="boton-agregar" onclick="agregarProceso()">
+                    Agregar proceso
+                </button>
 
-            <button class="boton-secundario" onclick="limpiarProcesos()">
-                Limpiar procesos
-            </button>
+                <button class="boton-secundario" onclick="limpiarProcesos()">
+                    Limpiar procesos
+                </button>
+            </div>
 
             <h3>Procesos registrados</h3>
 
             <div id="tablaProcesos">
-                <p>No hay procesos registrados.</p>
+                <p class="texto-secundario">No hay procesos registrados.</p>
             </div>
         `;
 
@@ -201,23 +193,23 @@ export function mostrarSeccion(seccion) {
         contenido.innerHTML = `
             <h2>Lista de ejecución</h2>
 
-            <p>
+            <p class="subtitulo-seccion">
                 Seleccione el algoritmo de planificación de procesos.
             </p>
 
-            <select id="algoritmoPlanificador">
-                <option value="FCFS">FCFS</option>
-                <option value="SJF">SJF</option>
-                <option value="RR">Round Robin</option>
-                <option value="PRIORIDAD">Por Prioridad</option>
-                <option value="SORTEO">Por Sorteo</option>
-            </select>
+            <div class="control-planificador">
+                <select id="algoritmoPlanificador">
+                    <option value="FCFS">FCFS</option>
+                    <option value="SJF">SJF</option>
+                    <option value="RR">Round Robin</option>
+                    <option value="PRIORIDAD">Por Prioridad</option>
+                    <option value="SORTEO">Por Sorteo</option>
+                </select>
 
-            <br><br>
-
-            <button onclick="ejecutarPlanificador()">
-                Ejecutar planificación
-            </button>
+                <button onclick="ejecutarPlanificador()">
+                    Ejecutar planificación
+                </button>
+            </div>
 
             <div id="resultadoPlanificador"></div>
         `;
@@ -229,22 +221,22 @@ export function mostrarSeccion(seccion) {
 
                 <div>
                     <label>Quantum:</label>
-                    <input type="number" id="quantum" min="1" value="2">
+                    <input type="number" id="quantum" min="1" value="2" class="dato-mono">
                 </div>
 
                 <div>
                     <label>Cantidad de páginas virtuales:</label>
-                    <input type="number" id="paginasVirtuales" min="1" value="8">
+                    <input type="number" id="paginasVirtuales" min="1" value="8" class="dato-mono">
                 </div>
 
                 <div>
                     <label>Cantidad de marcos físicos:</label>
-                    <input type="number" id="marcosFisicos" min="1" value="3">
+                    <input type="number" id="marcosFisicos" min="1" value="3" class="dato-mono">
                 </div>
 
                 <div>
                     <label>Espacio de Disco Duro (Bloques):</label>
-                    <input type="number" id="espacioDisco" min="1" value="16">
+                    <input type="number" id="espacioDisco" min="1" value="16" class="dato-mono">
                 </div>
 
                 <div>
@@ -283,25 +275,25 @@ export function mostrarSeccion(seccion) {
         contenido.innerHTML = `
             <h2>Emular MMU</h2>
 
-            <p>
+            <p class="subtitulo-seccion">
                 Seleccione el algoritmo de paginación:
             </p>
 
-            <select id="algoritmoMMU">
-                <option value="FIFO">FIFO</option>
-                <option value="LRU">LRU</option>
-                <option value="OPTIMO">Óptimo</option>
-                <option value="CLOCK">Clock</option>
-                <option value="SEGUNDA_OPORTUNIDAD">Segunda Oportunidad</option>
-                <option value="MRU">MRU</option>
-                <option value="LFU">LFU</option>
-            </select>
+            <div class="control-planificador">
+                <select id="algoritmoMMU">
+                    <option value="FIFO">FIFO</option>
+                    <option value="LRU">LRU</option>
+                    <option value="OPTIMO">Óptimo</option>
+                    <option value="CLOCK">Clock</option>
+                    <option value="SEGUNDA_OPORTUNIDAD">Segunda Oportunidad</option>
+                    <option value="MRU">MRU</option>
+                    <option value="LFU">LFU</option>
+                </select>
 
-            <br><br>
-
-            <button onclick="ejecutarMMU()">
-                Ejecutar MMU
-            </button>
+                <button onclick="ejecutarMMU()">
+                    Ejecutar MMU
+                </button>
+            </div>
 
             <div id="resultadoMMU"></div>
         `;

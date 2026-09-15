@@ -1,4 +1,5 @@
-import { obtenerListaProcesos, ultimaSecuenciaEjecucion, configuracionSO } from "./estado.js";
+import { obtenerListaProcesos, ultimaSecuenciaEjecucion, configuracionSO, guardarResultadoMMU, ultimoResultadoPlan } from "./estado.js";
+import { renderizarGanttVisual } from "./planificadores.js";
 
 export function ejecutarMMU() {
 
@@ -11,10 +12,6 @@ export function ejecutarMMU() {
 
     const procesos = obtenerListaProcesos();
 
-    // ==========================================
-    // VERIFICAR PROCESOS
-    // ==========================================
-
     if (procesos.length === 0) {
 
         resultado.innerHTML = `
@@ -26,10 +23,6 @@ export function ejecutarMMU() {
         return;
     }
 
-
-    // ==========================================
-    // OBTENER CANTIDAD DE MARCOS
-    // ==========================================
 
     const cantidadMarcos =
         configuracionSO.marcosFisicos;
@@ -46,10 +39,6 @@ export function ejecutarMMU() {
         return;
     }
 
-
-// ==========================================
-// GENERAR REFERENCIAS DESDE EL PLANIFICADOR
-// ==========================================
 
 let referencias = [];
 
@@ -178,9 +167,6 @@ ultimaSecuenciaEjecucion.forEach(idProceso => {
     }
 
 }
-// ==========================================
-// ALGORITMO FIFO
-// ==========================================
 
 export function mostrarResultadoMMU(
     resultado,
@@ -191,25 +177,41 @@ export function mostrarResultadoMMU(
     aciertos,
     fallos
 ) {
+    guardarResultadoMMU({
+        nombreAlgoritmo,
+        referencias,
+        cantidadMarcos,
+        pasos,
+        aciertos,
+        fallos
+    });
+
+    // Si hay un resultado de planificación previo, refrescar su contenedor para actualizar la fila MMU en el Gantt
+    const resultadoPlanificadorDiv = document.getElementById("resultadoPlanificador");
+    if (resultadoPlanificadorDiv && ultimoResultadoPlan && ultimoResultadoPlan.length > 0) {
+        resultadoPlanificadorDiv.innerHTML = renderizarGanttVisual(ultimoResultadoPlan);
+    }
+
     const totalReferencias = referencias.length;
     const porcentajeAciertos = totalReferencias > 0 ? (aciertos / totalReferencias) * 100 : 0;
     const porcentajeFallos = totalReferencias > 0 ? (fallos / totalReferencias) * 100 : 0;
 
     let html = `
-        <h3>Simulación MMU - ${nombreAlgoritmo}</h3>
+        <div class="panel-simulacion">
+            <h3>Simulación MMU - ${nombreAlgoritmo}</h3>
 
-        <p>
-            <strong>Referencias de página:</strong>
-            ${referencias.join(" → ")}
-        </p>
+            <p>
+                <strong>Referencias de página:</strong>
+                <span class="dato-mono">${referencias.join(" → ")}</span>
+            </p>
 
-        <h3>Matriz Paso a Paso (Intercambio entre Página y Marco)</h3>
+            <h3>Matriz Paso a Paso (Intercambio entre Página y Marco)</h3>
 
-        <div class="tabla-mmu-contenedor">
-            <table class="tabla-mmu-horizontal">
-                <tbody>
-                    <tr>
-                        <th class="encabezado-fila">REFERENCIA</th>
+            <div class="tabla-mmu-contenedor">
+                <table class="tabla-mmu-horizontal">
+                    <tbody>
+                        <tr>
+                            <th class="encabezado-fila">REFERENCIA</th>
     `;
 
     pasos.forEach(paso => {
@@ -226,7 +228,7 @@ export function mostrarResultadoMMU(
 
         pasos.forEach(paso => {
             const valor = paso.marcos[m];
-            html += `<td>${valor !== null ? valor : ""}</td>`;
+            html += `<td class="dato-mono">${valor !== null ? valor : ""}</td>`;
         });
 
         html += `</tr>`;
@@ -245,19 +247,20 @@ export function mostrarResultadoMMU(
     });
 
     html += `
-                </tr>
-            </tbody>
-        </table>
-        </div>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
 
-        <h3>Rendimiento de la MMU</h3>
+            <h3>Rendimiento de la MMU</h3>
 
-        <div class="estadisticas-mmu">
-            <p>Total de referencias: <strong>${totalReferencias}</strong></p>
-            <p>Aciertos: <strong>${aciertos}</strong></p>
-            <p>Fallos de página: <strong>${fallos}</strong></p>
-            <p>Tasa de aciertos: <strong>${porcentajeAciertos.toFixed(2)}%</strong></p>
-            <p>Tasa de fallos: <strong>${porcentajeFallos.toFixed(2)}%</strong></p>
+            <div class="estadisticas-mmu">
+                <p>Total de referencias: <strong>${totalReferencias}</strong></p>
+                <p>Aciertos: <strong>${aciertos}</strong></p>
+                <p>Fallos de página: <strong>${fallos}</strong></p>
+                <p>Tasa de aciertos: <strong>${porcentajeAciertos.toFixed(2)}%</strong></p>
+                <p>Tasa de fallos: <strong>${porcentajeFallos.toFixed(2)}%</strong></p>
+            </div>
         </div>
     `;
 
@@ -319,119 +322,53 @@ export function ejecutarFIFO(
         fallos
     );
 }
-// ================================================
-// ALGORITMO LRU
-// ================================================
 
 export function ejecutarLRU(
     referencias,
     cantidadMarcos,
     resultado
 ) {
-
-    // Marcos físicos inicialmente vacíos
     let marcos = new Array(cantidadMarcos).fill(null);
-
-    // Guarda el orden de uso de las páginas
     let ordenUso = [];
-
-    // Contadores
     let aciertos = 0;
     let fallos = 0;
-
-    // Guardar los pasos de la simulación
     let pasos = [];
 
-    // ================================================
-    // PROCESAR REFERENCIAS
-    // ================================================
-
     referencias.forEach((pagina, indice) => {
-
-        // Buscar la página en los marcos
         const posicion = marcos.indexOf(pagina);
 
-        // ============================================
-        // ACIERTO
-        // ============================================
-
         if (posicion !== -1) {
-
             aciertos++;
-
-            // La página acaba de utilizarse,
-            // por lo tanto pasa a ser la más reciente
-            ordenUso = ordenUso.filter(
-                p => p !== pagina
-            );
-
+            ordenUso = ordenUso.filter(p => p !== pagina);
             ordenUso.push(pagina);
 
-            // Guardar paso
             pasos.push({
                 turno: indice + 1,
                 pagina: pagina,
                 resultado: "Acierto",
                 marcos: [...marcos]
             });
-
-        }
-
-        // ============================================
-        // FALLO DE PÁGINA
-        // ============================================
-
-        else {
-
+        } else {
             fallos++;
-
-            // Buscar marco vacío
-            const marcoVacio =
-                marcos.indexOf(null);
-
-            // ========================================
-            // TODAVÍA HAY ESPACIO
-            // ========================================
+            const marcoVacio = marcos.indexOf(null);
 
             if (marcoVacio !== -1) {
-
                 marcos[marcoVacio] = pagina;
-
-            }
-
-            // ========================================
-            // MEMORIA LLENA
-            // ========================================
-
-            else {
-
-                // El primer elemento de ordenUso
-                // es el menos recientemente utilizado
-                const paginaSalida =
-                    ordenUso.shift();
-
-                // Buscar su marco
-                const posicionSalida =
-                    marcos.indexOf(paginaSalida);
-
-                // Reemplazar
+            } else {
+                const paginaSalida = ordenUso.shift();
+                const posicionSalida = marcos.indexOf(paginaSalida);
                 marcos[posicionSalida] = pagina;
             }
 
-            // La nueva página pasa a ser
-            // la más recientemente utilizada
             ordenUso.push(pagina);
 
-            // Guardar paso
             pasos.push({
                 turno: indice + 1,
                 pagina: pagina,
                 resultado: "Fallo de página",
                 marcos: [...marcos]
             });
-
         }
-
     });
 
     mostrarResultadoMMU(
@@ -444,55 +381,28 @@ export function ejecutarLRU(
         fallos
     );
 }
-// ================================================
-// ALGORITMO LFU
-// ================================================
 
 export function ejecutarLFU(
     referencias,
     cantidadMarcos,
     resultado
 ) {
-
-    // Marcos físicos inicialmente vacíos
     let marcos = new Array(cantidadMarcos).fill(null);
-
-    // Contador de frecuencia de cada página
     let frecuencias = {};
-
-    // Orden de llegada para desempatar
     let ordenLlegada = [];
-
-    // Contadores
     let aciertos = 0;
     let fallos = 0;
-
-    // Guardar los pasos
     let pasos = [];
 
-    // ================================================
-    // PROCESAR REFERENCIAS
-    // ================================================
-
     referencias.forEach((pagina, indice) => {
-
-        // Si la página todavía no tiene contador
         if (frecuencias[pagina] === undefined) {
             frecuencias[pagina] = 0;
         }
 
-        // Buscar la página en los marcos
         const posicion = marcos.indexOf(pagina);
 
-        // ============================================
-        // ACIERTO
-        // ============================================
-
         if (posicion !== -1) {
-
             aciertos++;
-
-            // Aumentar frecuencia
             frecuencias[pagina]++;
 
             pasos.push({
@@ -501,89 +411,36 @@ export function ejecutarLFU(
                 resultado: "Acierto",
                 marcos: [...marcos]
             });
-
-        }
-
-        // ============================================
-        // FALLO DE PÁGINA
-        // ============================================
-
-        else {
-
+        } else {
             fallos++;
-
-            // Aumentar frecuencia porque la página
-            // acaba de ser cargada
             frecuencias[pagina]++;
 
-            // Buscar marco vacío
             const marcoVacio = marcos.indexOf(null);
 
             if (marcoVacio !== -1) {
-
-                // Todavía hay espacio
                 marcos[marcoVacio] = pagina;
-
                 ordenLlegada.push(pagina);
-
-            }
-
-            else {
-
-                // ========================================
-                // MEMORIA LLENA
-                // ========================================
-
-                // Buscar la página con menor frecuencia
+            } else {
                 let paginaSalida = marcos[0];
 
                 for (let i = 1; i < marcos.length; i++) {
-
                     const paginaActual = marcos[i];
 
-                    if (
-                        frecuencias[paginaActual] <
-                        frecuencias[paginaSalida]
-                    ) {
-
+                    if (frecuencias[paginaActual] < frecuencias[paginaSalida]) {
                         paginaSalida = paginaActual;
+                    } else if (frecuencias[paginaActual] === frecuencias[paginaSalida]) {
+                        const posicionActual = ordenLlegada.indexOf(paginaActual);
+                        const posicionSalida = ordenLlegada.indexOf(paginaSalida);
 
-                    }
-                    else if (
-                        frecuencias[paginaActual] ===
-                        frecuencias[paginaSalida]
-                    ) {
-
-                        // Desempate: sale la que llegó primero
-                        const posicionActual =
-                            ordenLlegada.indexOf(paginaActual);
-
-                        const posicionSalida =
-                            ordenLlegada.indexOf(paginaSalida);
-
-                        if (
-                            posicionActual < posicionSalida
-                        ) {
-
+                        if (posicionActual < posicionSalida) {
                             paginaSalida = paginaActual;
-
                         }
                     }
                 }
 
-                // Buscar el marco de la página que sale
-                const posicionSalida =
-                    marcos.indexOf(paginaSalida);
-
-                // Reemplazar
+                const posicionSalida = marcos.indexOf(paginaSalida);
                 marcos[posicionSalida] = pagina;
-
-                // Actualizar orden de llegada
-                ordenLlegada =
-                    ordenLlegada.filter(
-                        p => p !== pagina
-                    );
-
+                ordenLlegada = ordenLlegada.filter(p => p !== pagina);
                 ordenLlegada.push(pagina);
             }
 
@@ -606,9 +463,6 @@ export function ejecutarLFU(
         fallos
     );
 }
-// ============================================
-// ALGORITMO CLOCK (RELOJ)
-// ============================================
 
 export function ejecutarClock(
     referencias,
@@ -675,10 +529,6 @@ export function ejecutarClock(
         fallos
     );
 }
-
-// ============================================
-// ALGORITMO SEGUNDA OPORTUNIDAD
-// ============================================
 
 export function ejecutarSegundaOportunidad(
     referencias,
@@ -749,10 +599,6 @@ export function ejecutarSegundaOportunidad(
     );
 }
 
-// ============================================
-// ALGORITMO MRU (MÁS RECIENTEMENTE USADO)
-// ============================================
-
 export function ejecutarMRU(
     referencias,
     cantidadMarcos,
@@ -817,140 +663,64 @@ export function ejecutarMRU(
     );
 }
 
-// ============================================
-// ALGORITMO ÓPTIMO
-// ============================================
-
 export function ejecutarOptimo(
     referencias,
     cantidadMarcos,
     resultado
 ) {
-
-    // Marcos físicos inicialmente vacíos
-    let marcos =
-        new Array(cantidadMarcos).fill(null);
-
-    // Contadores
+    let marcos = new Array(cantidadMarcos).fill(null);
     let aciertos = 0;
     let fallos = 0;
-
-    // Guardar los pasos de la simulación
     let pasos = [];
 
-    // ============================================
-    // PROCESAR REFERENCIAS
-    // ============================================
+    referencias.forEach((pagina, indice) => {
+        const posicion = marcos.indexOf(pagina);
 
-    referencias.forEach(
-        (pagina, indice) => {
+        if (posicion !== -1) {
+            aciertos++;
 
-            // Buscar si la página ya está en memoria
-            const posicion =
-                marcos.indexOf(pagina);
+            pasos.push({
+                turno: indice + 1,
+                pagina: pagina,
+                resultado: "Acierto",
+                marcos: [...marcos]
+            });
+        } else {
+            fallos++;
+            const marcoVacio = marcos.indexOf(null);
 
-            // ========================================
-            // ACIERTO
-            // ========================================
+            if (marcoVacio !== -1) {
+                marcos[marcoVacio] = pagina;
+            } else {
+                let posicionReemplazo = 0;
+                let mayorDistancia = -1;
 
-            if (posicion !== -1) {
+                for (let i = 0; i < marcos.length; i++) {
+                    const paginaEnMarco = marcos[i];
+                    const siguienteUso = referencias.slice(indice + 1).indexOf(paginaEnMarco);
 
-                aciertos++;
-
-                pasos.push({
-                    turno: indice + 1,
-                    pagina: pagina,
-                    resultado: "Acierto",
-                    marcos: [...marcos]
-                });
-
-            }
-
-            // ========================================
-            // FALLO DE PÁGINA
-            // ========================================
-
-            else {
-
-                fallos++;
-
-                // Buscar un marco vacío
-                const marcoVacio =
-                    marcos.indexOf(null);
-
-                // ====================================
-                // TODAVÍA HAY ESPACIO
-                // ====================================
-
-                if (marcoVacio !== -1) {
-
-                    marcos[marcoVacio] =
-                        pagina;
-
-                }
-
-                // ====================================
-                // MEMORIA LLENA
-                // ====================================
-
-                else {
-
-                    let posicionReemplazo = 0;
-                    let mayorDistancia = -1;
-
-                    // Analizar cada página que está
-                    // actualmente en memoria
-                    for (
-                        let i = 0;
-                        i < marcos.length;
-                        i++
-                    ) {
-
-                        const paginaEnMarco =
-                            marcos[i];
-
-                        // Buscar cuándo volverá a utilizarse
-                        const siguienteUso =
-                            referencias
-                                .slice(indice + 1)
-                                .indexOf(paginaEnMarco);
-
-                        // Si nunca vuelve a utilizarse,
-                        // es la mejor candidata para reemplazar
-                        if (siguienteUso === -1) {
-
-                            posicionReemplazo = i;
-                            break;
-                        }
-
-                        // Guardar la página cuyo próximo
-                        // uso está más lejos
-                        if (
-                            siguienteUso >
-                            mayorDistancia
-                        ) {
-
-                            mayorDistancia =
-                                siguienteUso;
-
-                            posicionReemplazo = i;
-                        }
+                    if (siguienteUso === -1) {
+                        posicionReemplazo = i;
+                        break;
                     }
 
-                    // Reemplazar la página seleccionada
-                    marcos[posicionReemplazo] =
-                        pagina;
+                    if (siguienteUso > mayorDistancia) {
+                        mayorDistancia = siguienteUso;
+                        posicionReemplazo = i;
+                    }
                 }
 
-                pasos.push({
-                    turno: indice + 1,
-                    pagina: pagina,
-                    resultado: "Fallo de página",
-                    marcos: [...marcos]
-                });
+                marcos[posicionReemplazo] = pagina;
             }
+
+            pasos.push({
+                turno: indice + 1,
+                pagina: pagina,
+                resultado: "Fallo de página",
+                marcos: [...marcos]
+            });
         }
-    );
+    });
 
     mostrarResultadoMMU(
         resultado,
@@ -962,6 +732,3 @@ export function ejecutarOptimo(
         fallos
     );
 }
-// ==========================================
-// SALIR
-// ==========================================
