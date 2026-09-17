@@ -1,4 +1,4 @@
-import { obtenerListaProcesos, guardarSecuencia, configuracionSO, ultimoResultadoMMU } from "./estado.js";
+import { obtenerListaProcesos, guardarSecuencia, configuracionSO } from "./estado.js";
 
 export function ejecutarPlanificador() {
 
@@ -533,39 +533,6 @@ export function renderizarGanttVisual(resultadoPlan) {
         const pct = (t / tiempoTotal) * 100;
         ganttHtml += `
             <div class="gantt-marca-tiempo" style="left: ${pct}%;">${t}</div>
-        `;
-    }
-
-    ganttHtml += `
-                </div>
-    `;
-
-    if (ultimoResultadoMMU && ultimoResultadoMMU.pasos && ultimoResultadoMMU.pasos.length > 0) {
-        const totalRefs = ultimoResultadoMMU.pasos.length;
-        ganttHtml += `
-            <div class="mmu-eje-fila">
-                <div class="mmu-eje-label">MMU</div>
-                <div class="mmu-eje-pista">
-        `;
-
-        ultimoResultadoMMU.pasos.forEach((paso, idx) => {
-            const pct = (idx / (totalRefs - 1 || 1)) * 100;
-            const esFallo = paso.resultado === "Fallo de página";
-            const claseMarcador = esFallo ? "mmu-marcador-fallo" : "mmu-marcador-acierto";
-            const tooltipText = `Ref #${idx + 1}: Pag ${paso.pagina} (${paso.resultado})`;
-
-            ganttHtml += `
-                <div class="mmu-marcador-ref ${claseMarcador}"
-                     style="left: ${pct}%;"
-                     title="${tooltipText}">
-                    P${paso.pagina}
-                </div>
-            `;
-        });
-
-        ganttHtml += `
-                </div>
-            </div>
         `;
     }
 

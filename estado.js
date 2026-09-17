@@ -32,7 +32,6 @@ export let configuracionSO = JSON.parse(
     quantum: 2,
     paginasVirtuales: 8,
     marcosFisicos: 3,
-    espacioDisco: 16,
     algoritmoPredeterminado: "FIFO"
 };
 

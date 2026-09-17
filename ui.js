@@ -101,7 +101,6 @@ export function guardarConfiguracion() {
         quantum: Number(document.getElementById("quantum").value),
         paginasVirtuales: Number(document.getElementById("paginasVirtuales").value),
         marcosFisicos: Number(document.getElementById("marcosFisicos").value),
-        espacioDisco: Number(document.getElementById("espacioDisco").value),
         algoritmoPredeterminado: document.getElementById("algoritmoPredeterminadoMMU").value
     };
 
@@ -115,7 +114,6 @@ export function guardarConfiguracion() {
             <p>Quantum: <span class="dato-mono">${configuracionSO.quantum}</span></p>
             <p>Páginas virtuales: <span class="dato-mono">${configuracionSO.paginasVirtuales}</span></p>
             <p>Marcos físicos: <span class="dato-mono">${configuracionSO.marcosFisicos}</span></p>
-            <p>Espacio de Disco Duro: <span class="dato-mono">${configuracionSO.espacioDisco}</span> bloques</p>
             <p>Algoritmo MMU predeterminado: <span>${configuracionSO.algoritmoPredeterminado}</span></p>
         </div>
     `;
@@ -235,11 +233,6 @@ export function mostrarSeccion(seccion) {
                 </div>
 
                 <div>
-                    <label>Espacio de Disco Duro (Bloques):</label>
-                    <input type="number" id="espacioDisco" min="1" value="16" class="dato-mono">
-                </div>
-
-                <div>
                     <label>Algoritmo MMU por defecto:</label>
                     <select id="algoritmoPredeterminadoMMU">
                         <option value="FIFO">FIFO</option>
@@ -267,7 +260,6 @@ export function mostrarSeccion(seccion) {
         document.getElementById("quantum").value = configuracionSO.quantum;
         document.getElementById("paginasVirtuales").value = configuracionSO.paginasVirtuales;
         document.getElementById("marcosFisicos").value = configuracionSO.marcosFisicos;
-        document.getElementById("espacioDisco").value = configuracionSO.espacioDisco || 16;
         document.getElementById("algoritmoPredeterminadoMMU").value = configuracionSO.algoritmoPredeterminado || "FIFO";
 
         renderizarTablaPaginas();
