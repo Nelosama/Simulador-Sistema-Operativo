@@ -1,5 +1,4 @@
 import { obtenerListaProcesos, ultimaSecuenciaEjecucion, configuracionSO, guardarResultadoMMU, ultimoResultadoPlan } from "./estado.js";
-import { renderizarGanttVisual } from "./planificadores.js";
 
 export function ejecutarMMU() {
 
@@ -186,12 +185,6 @@ export function mostrarResultadoMMU(
         fallos
     });
 
-    // Si hay un resultado de planificación previo, refrescar su contenedor para actualizar la fila MMU en el Gantt
-    const resultadoPlanificadorDiv = document.getElementById("resultadoPlanificador");
-    if (resultadoPlanificadorDiv && ultimoResultadoPlan && ultimoResultadoPlan.length > 0) {
-        resultadoPlanificadorDiv.innerHTML = renderizarGanttVisual(ultimoResultadoPlan);
-    }
-
     const totalReferencias = referencias.length;
     const porcentajeAciertos = totalReferencias > 0 ? (aciertos / totalReferencias) * 100 : 0;
     const porcentajeFallos = totalReferencias > 0 ? (fallos / totalReferencias) * 100 : 0;
@@ -228,7 +221,20 @@ export function mostrarResultadoMMU(
 
         pasos.forEach(paso => {
             const valor = paso.marcos[m];
-            html += `<td class="dato-mono">${valor !== null ? valor : ""}</td>`;
+            let claseCelda = "dato-mono";
+            let tooltipCelda = paso.motivo || `Paso ${paso.turno}: Página ${paso.pagina}`;
+
+            if (paso.marcoModificado === m) {
+                if (paso.tipoCambio === "reemplazo") {
+                    claseCelda += " celda-reemplazada";
+                } else if (paso.tipoCambio === "carga") {
+                    claseCelda += " celda-cargada";
+                } else if (paso.tipoCambio === "hit") {
+                    claseCelda += " celda-hit";
+                }
+            }
+
+            html += `<td class="${claseCelda}" title="${tooltipCelda}">${valor !== null ? valor : ""}</td>`;
         });
 
         html += `</tr>`;
@@ -261,6 +267,32 @@ export function mostrarResultadoMMU(
                 <p>Tasa de aciertos: <strong>${porcentajeAciertos.toFixed(2)}%</strong></p>
                 <p>Tasa de fallos: <strong>${porcentajeFallos.toFixed(2)}%</strong></p>
             </div>
+
+            <details class="detalle-ejecucion" style="margin-top: 24px;">
+                <summary>Ver criterio de reemplazo paso a paso</summary>
+                <div class="detalle-contenido">
+                    <ul class="lista-criterio-pasos">
+    `;
+
+    pasos.forEach((paso) => {
+        const esFallo = paso.resultado === "Fallo de página";
+        const badgeClase = esFallo ? "badge-fallo" : "badge-acierto";
+        html += `
+            <li class="item-criterio-paso">
+                <div class="encabezado-paso">
+                    <span class="paso-num dato-mono">Turno ${paso.turno}</span>
+                    <span class="paso-ref dato-mono">Ref: Página ${paso.pagina}</span>
+                    <span class="${badgeClase}">${paso.resultado}</span>
+                </div>
+                <div class="paso-motivo">${paso.motivo}</div>
+            </li>
+        `;
+    });
+
+    html += `
+                    </ul>
+                </div>
+            </details>
         </div>
     `;
 
@@ -287,7 +319,10 @@ export function ejecutarFIFO(
                 turno: indice + 1,
                 pagina: pagina,
                 resultado: "Acierto",
-                marcos: [...marcos]
+                marcos: [...marcos],
+                marcoModificado: posicion,
+                tipoCambio: "hit",
+                motivo: `Página ${pagina} ya presente en el marco ${posicion + 1} (Acierto).`
             });
         } else {
             fallos++;
@@ -296,19 +331,36 @@ export function ejecutarFIFO(
             if (marcoVacio !== -1) {
                 marcos[marcoVacio] = pagina;
                 colaFIFO.push(pagina);
+                pasos.push({
+                    turno: indice + 1,
+                    pagina: pagina,
+                    resultado: "Fallo de página",
+                    marcos: [...marcos],
+                    marcoModificado: marcoVacio,
+                    tipoCambio: "carga",
+                    colaPrevia: [...colaFIFO],
+                    motivo: `Fallo de página. Marco ${marcoVacio + 1} estaba libre; se asigna la página ${pagina}.`
+                });
             } else {
+                const colaVigente = [...colaFIFO];
                 const paginaSalida = colaFIFO.shift();
                 const posicionSalida = marcos.indexOf(paginaSalida);
                 marcos[posicionSalida] = pagina;
                 colaFIFO.push(pagina);
-            }
 
-            pasos.push({
-                turno: indice + 1,
-                pagina: pagina,
-                resultado: "Fallo de página",
-                marcos: [...marcos]
-            });
+                pasos.push({
+                    turno: indice + 1,
+                    pagina: pagina,
+                    resultado: "Fallo de página",
+                    marcos: [...marcos],
+                    marcoModificado: posicionSalida,
+                    tipoCambio: "reemplazo",
+                    paginaSalida: paginaSalida,
+                    paginaEntrante: pagina,
+                    colaPrevia: colaVigente,
+                    motivo: `Cola de llegada (FIFO): [${colaVigente.join(", ")}]; la próxima en salir es la página ${paginaSalida}. Se reemplaza en el marco ${posicionSalida + 1} por la página ${pagina}.`
+                });
+            }
         }
     });
 
@@ -346,7 +398,11 @@ export function ejecutarLRU(
                 turno: indice + 1,
                 pagina: pagina,
                 resultado: "Acierto",
-                marcos: [...marcos]
+                marcos: [...marcos],
+                marcoModificado: posicion,
+                tipoCambio: "hit",
+                ordenUsoActual: [...ordenUso],
+                motivo: `Página ${pagina} ya presente en el marco ${posicion + 1} (Acierto). Se actualiza orden de uso.`
             });
         } else {
             fallos++;
@@ -354,20 +410,39 @@ export function ejecutarLRU(
 
             if (marcoVacio !== -1) {
                 marcos[marcoVacio] = pagina;
+                ordenUso.push(pagina);
+
+                pasos.push({
+                    turno: indice + 1,
+                    pagina: pagina,
+                    resultado: "Fallo de página",
+                    marcos: [...marcos],
+                    marcoModificado: marcoVacio,
+                    tipoCambio: "carga",
+                    ordenUsoActual: [...ordenUso],
+                    motivo: `Fallo de página. Marco ${marcoVacio + 1} estaba libre; se asigna la página ${pagina}.`
+                });
             } else {
+                const ordenPrevio = [...ordenUso];
                 const paginaSalida = ordenUso.shift();
                 const posicionSalida = marcos.indexOf(paginaSalida);
                 marcos[posicionSalida] = pagina;
+                ordenUso.push(pagina);
+
+                pasos.push({
+                    turno: indice + 1,
+                    pagina: pagina,
+                    resultado: "Fallo de página",
+                    marcos: [...marcos],
+                    marcoModificado: posicionSalida,
+                    tipoCambio: "reemplazo",
+                    paginaSalida: paginaSalida,
+                    paginaEntrante: pagina,
+                    ordenUsoPrevio: ordenPrevio,
+                    ordenUsoActual: [...ordenUso],
+                    motivo: `Orden de uso (menos→más reciente): [${ordenPrevio.join(", ")}]; se reemplaza la página ${paginaSalida} por ser la menos usada recientemente (marco ${posicionSalida + 1}) por la página ${pagina}.`
+                });
             }
-
-            ordenUso.push(pagina);
-
-            pasos.push({
-                turno: indice + 1,
-                pagina: pagina,
-                resultado: "Fallo de página",
-                marcos: [...marcos]
-            });
         }
     });
 
@@ -409,7 +484,11 @@ export function ejecutarLFU(
                 turno: indice + 1,
                 pagina: pagina,
                 resultado: "Acierto",
-                marcos: [...marcos]
+                marcos: [...marcos],
+                marcoModificado: posicion,
+                tipoCambio: "hit",
+                frecuencias: { ...frecuencias },
+                motivo: `Página ${pagina} ya presente en el marco ${posicion + 1} (Acierto). Frecuencia aumentada a ${frecuencias[pagina]}.`
             });
         } else {
             fallos++;
@@ -420,15 +499,35 @@ export function ejecutarLFU(
             if (marcoVacio !== -1) {
                 marcos[marcoVacio] = pagina;
                 ordenLlegada.push(pagina);
+
+                pasos.push({
+                    turno: indice + 1,
+                    pagina: pagina,
+                    resultado: "Fallo de página",
+                    marcos: [...marcos],
+                    marcoModificado: marcoVacio,
+                    tipoCambio: "carga",
+                    frecuencias: { ...frecuencias },
+                    motivo: `Fallo de página. Marco ${marcoVacio + 1} estaba libre; se asigna la página ${pagina}.`
+                });
             } else {
+                let tablaFrecuenciasResidentes = marcos.map(p => ({
+                    pagina: p,
+                    frecuencia: frecuencias[p],
+                    posicionOrden: ordenLlegada.indexOf(p)
+                }));
+
                 let paginaSalida = marcos[0];
+                let hayEmpate = false;
 
                 for (let i = 1; i < marcos.length; i++) {
                     const paginaActual = marcos[i];
 
                     if (frecuencias[paginaActual] < frecuencias[paginaSalida]) {
                         paginaSalida = paginaActual;
+                        hayEmpate = false;
                     } else if (frecuencias[paginaActual] === frecuencias[paginaSalida]) {
+                        hayEmpate = true;
                         const posicionActual = ordenLlegada.indexOf(paginaActual);
                         const posicionSalida = ordenLlegada.indexOf(paginaSalida);
 
@@ -442,14 +541,28 @@ export function ejecutarLFU(
                 marcos[posicionSalida] = pagina;
                 ordenLlegada = ordenLlegada.filter(p => p !== pagina);
                 ordenLlegada.push(pagina);
-            }
 
-            pasos.push({
-                turno: indice + 1,
-                pagina: pagina,
-                resultado: "Fallo de página",
-                marcos: [...marcos]
-            });
+                let motivoText = `Frecuencias residentes: ${tablaFrecuenciasResidentes.map(f => `Pág ${f.pagina}: ${f.frecuencia}`).join(", ")}. `;
+                motivoText += `Se reemplaza la página ${paginaSalida} (frecuencia ${tablaFrecuenciasResidentes.find(f => f.pagina === paginaSalida).frecuencia})`;
+                if (hayEmpate) {
+                    motivoText += ` [desempate por orden de llegada]`;
+                }
+                motivoText += ` en el marco ${posicionSalida + 1} por la página ${pagina}.`;
+
+                pasos.push({
+                    turno: indice + 1,
+                    pagina: pagina,
+                    resultado: "Fallo de página",
+                    marcos: [...marcos],
+                    marcoModificado: posicionSalida,
+                    tipoCambio: "reemplazo",
+                    paginaSalida: paginaSalida,
+                    paginaEntrante: pagina,
+                    frecuenciasResidentes: tablaFrecuenciasResidentes,
+                    hayEmpate: hayEmpate,
+                    motivo: motivoText
+                });
+            }
         }
     });
 
@@ -486,7 +599,12 @@ export function ejecutarClock(
                 turno: indice + 1,
                 pagina: pagina,
                 resultado: "Acierto",
-                marcos: [...marcos]
+                marcos: [...marcos],
+                marcoModificado: posicion,
+                tipoCambio: "hit",
+                bitsUso: [...bitsUso],
+                puntero: puntero,
+                motivo: `Página ${pagina} ya presente en el marco ${posicion + 1} (Acierto). Bit de uso puesto en 1.`
             });
         } else {
             fallos++;
@@ -495,10 +613,35 @@ export function ejecutarClock(
             if (marcoVacio !== -1) {
                 marcos[marcoVacio] = pagina;
                 bitsUso[marcoVacio] = 1;
+                const marcoAsignado = marcoVacio;
                 puntero = (marcoVacio + 1) % cantidadMarcos;
+
+                pasos.push({
+                    turno: indice + 1,
+                    pagina: pagina,
+                    resultado: "Fallo de página",
+                    marcos: [...marcos],
+                    marcoModificado: marcoAsignado,
+                    tipoCambio: "carga",
+                    bitsUso: [...bitsUso],
+                    puntero: puntero,
+                    motivo: `Fallo de página. Marco ${marcoAsignado + 1} estaba libre; se asigna página ${pagina} con bit de uso 1. Puntero avanza a marco ${puntero + 1}.`
+                });
             } else {
+                let evaluados = [];
+                let marcoReemplazado = null;
+                let paginaSalida = null;
+
                 while (true) {
+                    evaluados.push({
+                        marco: puntero,
+                        pagina: marcos[puntero],
+                        bitAntes: bitsUso[puntero]
+                    });
+
                     if (bitsUso[puntero] === 0) {
+                        marcoReemplazado = puntero;
+                        paginaSalida = marcos[puntero];
                         marcos[puntero] = pagina;
                         bitsUso[puntero] = 1;
                         puntero = (puntero + 1) % cantidadMarcos;
@@ -508,14 +651,32 @@ export function ejecutarClock(
                         puntero = (puntero + 1) % cantidadMarcos;
                     }
                 }
-            }
 
-            pasos.push({
-                turno: indice + 1,
-                pagina: pagina,
-                resultado: "Fallo de página",
-                marcos: [...marcos]
-            });
+                let motivoText = `Evaluación del reloj: `;
+                motivoText += evaluados.map(ev => {
+                    if (ev.bitAntes === 1) {
+                        return `marco ${ev.marco + 1} (Pág ${ev.pagina}, bit 1→0, segunda oportunidad)`;
+                    } else {
+                        return `marco ${ev.marco + 1} (Pág ${ev.pagina}, bit 0 → reemplazada)`;
+                    }
+                }).join("; ") + `. `;
+                motivoText += `Se reemplaza página ${paginaSalida} en marco ${marcoReemplazado + 1} por página ${pagina}. Puntero avanza a marco ${puntero + 1}.`;
+
+                pasos.push({
+                    turno: indice + 1,
+                    pagina: pagina,
+                    resultado: "Fallo de página",
+                    marcos: [...marcos],
+                    marcoModificado: marcoReemplazado,
+                    tipoCambio: "reemplazo",
+                    paginaSalida: paginaSalida,
+                    paginaEntrante: pagina,
+                    bitsUso: [...bitsUso],
+                    puntero: puntero,
+                    evaluados: evaluados,
+                    motivo: motivoText
+                });
+            }
         }
     });
 
@@ -552,7 +713,12 @@ export function ejecutarSegundaOportunidad(
                 turno: indice + 1,
                 pagina: pagina,
                 resultado: "Acierto",
-                marcos: [...marcos]
+                marcos: [...marcos],
+                marcoModificado: posicion,
+                tipoCambio: "hit",
+                bitsUso: { ...bitsUso },
+                cola: [...cola],
+                motivo: `Página ${pagina} ya presente en el marco ${posicion + 1} (Acierto). Bit de uso puesto en 1.`
             });
         } else {
             fallos++;
@@ -562,29 +728,70 @@ export function ejecutarSegundaOportunidad(
                 marcos[marcoVacio] = pagina;
                 cola.push(pagina);
                 bitsUso[pagina] = 0;
+
+                pasos.push({
+                    turno: indice + 1,
+                    pagina: pagina,
+                    resultado: "Fallo de página",
+                    marcos: [...marcos],
+                    marcoModificado: marcoVacio,
+                    tipoCambio: "carga",
+                    bitsUso: { ...bitsUso },
+                    cola: [...cola],
+                    motivo: `Fallo de página. Marco ${marcoVacio + 1} estaba libre; se asigna página ${pagina} con bit de uso 0.`
+                });
             } else {
+                let evaluados = [];
+                let candidatoSalida = null;
+                let posicionSalida = null;
+
                 while (true) {
                     const candidato = cola.shift();
-                    if (bitsUso[candidato] === 1) {
+                    const bitAntes = bitsUso[candidato];
+
+                    if (bitAntes === 1) {
                         bitsUso[candidato] = 0;
                         cola.push(candidato);
+                        evaluados.push({
+                            pagina: candidato,
+                            bitAntes: 1,
+                            accion: "Segunda oportunidad (bit 1→0, enviada al final de la cola)"
+                        });
                     } else {
-                        const posicionSalida = marcos.indexOf(candidato);
+                        candidatoSalida = candidato;
+                        posicionSalida = marcos.indexOf(candidato);
                         marcos[posicionSalida] = pagina;
                         cola.push(pagina);
                         bitsUso[pagina] = 0;
                         delete bitsUso[candidato];
+                        evaluados.push({
+                            pagina: candidato,
+                            bitAntes: 0,
+                            accion: "Reemplazada (bit era 0)"
+                        });
                         break;
                     }
                 }
-            }
 
-            pasos.push({
-                turno: indice + 1,
-                pagina: pagina,
-                resultado: "Fallo de página",
-                marcos: [...marcos]
-            });
+                let motivoText = `Evaluación Segunda Oportunidad: `;
+                motivoText += evaluados.map(ev => `Pág ${ev.pagina}: ${ev.accion}`).join("; ") + `. `;
+                motivoText += `Se reemplaza página ${candidatoSalida} en marco ${posicionSalida + 1} por página ${pagina}.`;
+
+                pasos.push({
+                    turno: indice + 1,
+                    pagina: pagina,
+                    resultado: "Fallo de página",
+                    marcos: [...marcos],
+                    marcoModificado: posicionSalida,
+                    tipoCambio: "reemplazo",
+                    paginaSalida: candidatoSalida,
+                    paginaEntrante: pagina,
+                    bitsUso: { ...bitsUso },
+                    cola: [...cola],
+                    evaluados: evaluados,
+                    motivo: motivoText
+                });
+            }
         }
     });
 
@@ -620,7 +827,11 @@ export function ejecutarMRU(
                 turno: indice + 1,
                 pagina: pagina,
                 resultado: "Acierto",
-                marcos: [...marcos]
+                marcos: [...marcos],
+                marcoModificado: posicion,
+                tipoCambio: "hit",
+                ultimoUso: ultimoUso,
+                motivo: `Página ${pagina} ya presente en el marco ${posicion + 1} (Acierto). Se actualiza última página usada a ${pagina}.`
             });
         } else {
             fallos++;
@@ -628,27 +839,43 @@ export function ejecutarMRU(
 
             if (marcoVacio !== -1) {
                 marcos[marcoVacio] = pagina;
+                ultimoUso = pagina;
+
+                pasos.push({
+                    turno: indice + 1,
+                    pagina: pagina,
+                    resultado: "Fallo de página",
+                    marcos: [...marcos],
+                    marcoModificado: marcoVacio,
+                    tipoCambio: "carga",
+                    ultimoUso: ultimoUso,
+                    motivo: `Fallo de página. Marco ${marcoVacio + 1} estaba libre; se asigna la página ${pagina}.`
+                });
             } else {
-                let posicionReemplazo = marcos.indexOf(ultimoUso);
-                // Análisis de condición:
-                // 'ultimoUso' representa la página accedida o cargada más recientemente.
-                // Dado el flujo del algoritmo MRU, 'ultimoUso' siempre está en uno de los marcos de memoria
-                // (ya sea porque fue cargada en un fallo previo o accedida en un acierto).
-                // Por lo tanto, 'marcos.indexOf(ultimoUso)' nunca retornará -1 en la práctica,
-                // haciendo que la condición 'posicionReemplazo === -1' sea inalcanzable.
+                const ultimoUsoPrevio = ultimoUso;
+                let posicionReemplazo = marcos.indexOf(ultimoUsoPrevio);
                 if (posicionReemplazo === -1) {
                     posicionReemplazo = 0;
                 }
-                marcos[posicionReemplazo] = pagina;
-            }
 
-            ultimoUso = pagina;
-            pasos.push({
-                turno: indice + 1,
-                pagina: pagina,
-                resultado: "Fallo de página",
-                marcos: [...marcos]
-            });
+                const paginaSalida = marcos[posicionReemplazo];
+                marcos[posicionReemplazo] = pagina;
+                ultimoUso = pagina;
+
+                pasos.push({
+                    turno: indice + 1,
+                    pagina: pagina,
+                    resultado: "Fallo de página",
+                    marcos: [...marcos],
+                    marcoModificado: posicionReemplazo,
+                    tipoCambio: "reemplazo",
+                    paginaSalida: paginaSalida,
+                    paginaEntrante: pagina,
+                    ultimoUsoPrevio: ultimoUsoPrevio,
+                    ultimoUso: ultimoUso,
+                    motivo: `Última página usada (MRU): página ${ultimoUsoPrevio}. Se reemplaza explícitamente en el marco ${posicionReemplazo + 1} por la nueva página ${pagina}.`
+                });
+            }
         }
     });
 
@@ -683,7 +910,10 @@ export function ejecutarOptimo(
                 turno: indice + 1,
                 pagina: pagina,
                 resultado: "Acierto",
-                marcos: [...marcos]
+                marcos: [...marcos],
+                marcoModificado: posicion,
+                tipoCambio: "hit",
+                motivo: `Página ${pagina} ya presente en el marco ${posicion + 1} (Acierto).`
             });
         } else {
             fallos++;
@@ -691,34 +921,76 @@ export function ejecutarOptimo(
 
             if (marcoVacio !== -1) {
                 marcos[marcoVacio] = pagina;
+
+                pasos.push({
+                    turno: indice + 1,
+                    pagina: pagina,
+                    resultado: "Fallo de página",
+                    marcos: [...marcos],
+                    marcoModificado: marcoVacio,
+                    tipoCambio: "carga",
+                    motivo: `Fallo de página. Marco ${marcoVacio + 1} estaba libre; se asigna la página ${pagina}.`
+                });
             } else {
                 let posicionReemplazo = 0;
                 let mayorDistancia = -1;
+                let distanciasFuturas = [];
 
                 for (let i = 0; i < marcos.length; i++) {
                     const paginaEnMarco = marcos[i];
-                    const siguienteUso = referencias.slice(indice + 1).indexOf(paginaEnMarco);
+                    const siguienteUsoRelativo = referencias.slice(indice + 1).indexOf(paginaEnMarco);
 
-                    if (siguienteUso === -1) {
-                        posicionReemplazo = i;
-                        break;
-                    }
-
-                    if (siguienteUso > mayorDistancia) {
-                        mayorDistancia = siguienteUso;
-                        posicionReemplazo = i;
+                    if (siguienteUsoRelativo === -1) {
+                        distanciasFuturas.push({
+                            pagina: paginaEnMarco,
+                            marco: i,
+                            turnoAbsoluto: null,
+                            distancia: Infinity,
+                            texto: "nunca más"
+                        });
+                    } else {
+                        const turnoAbsoluto = (indice + 1) + siguienteUsoRelativo + 1;
+                        distanciasFuturas.push({
+                            pagina: paginaEnMarco,
+                            marco: i,
+                            turnoAbsoluto: turnoAbsoluto,
+                            distancia: siguienteUsoRelativo + 1,
+                            texto: `turno ${turnoAbsoluto}`
+                        });
                     }
                 }
 
-                marcos[posicionReemplazo] = pagina;
-            }
+                for (let i = 0; i < distanciasFuturas.length; i++) {
+                    const item = distanciasFuturas[i];
+                    if (item.distancia === Infinity) {
+                        posicionReemplazo = item.marco;
+                        break;
+                    }
+                    if (item.distancia > mayorDistancia) {
+                        mayorDistancia = item.distancia;
+                        posicionReemplazo = item.marco;
+                    }
+                }
 
-            pasos.push({
-                turno: indice + 1,
-                pagina: pagina,
-                resultado: "Fallo de página",
-                marcos: [...marcos]
-            });
+                const paginaSalida = marcos[posicionReemplazo];
+                marcos[posicionReemplazo] = pagina;
+
+                let motivoText = `Distancias futuras: ${distanciasFuturas.map(d => `Pág ${d.pagina} → ${d.texto}`).join(", ")}. `;
+                motivoText += `Se reemplaza página ${paginaSalida} en marco ${posicionReemplazo + 1} por ser la de mayor distancia/nunca más por la página ${pagina}.`;
+
+                pasos.push({
+                    turno: indice + 1,
+                    pagina: pagina,
+                    resultado: "Fallo de página",
+                    marcos: [...marcos],
+                    marcoModificado: posicionReemplazo,
+                    tipoCambio: "reemplazo",
+                    paginaSalida: paginaSalida,
+                    paginaEntrante: pagina,
+                    distanciasFuturas: distanciasFuturas,
+                    motivo: motivoText
+                });
+            }
         }
     });
 
