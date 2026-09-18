@@ -16,10 +16,39 @@ export function guardarProcesosEnLocalStorage() {
 export let ultimaSecuenciaEjecucion = [];
 export let ultimoResultadoPlan = [];
 export let ultimoResultadoMMU = null;
+export let ultimosProcesosEjecutados = [];
 
-export function guardarSecuencia(resultadoPlan) {
+export let colaPersonalizada = [];
+export let usarColaPersonalizada = false;
+
+export function setUsarColaPersonalizada(valor) {
+    usarColaPersonalizada = valor;
+}
+
+export function agregarAColaPersonalizada(item) {
+    colaPersonalizada.push(item);
+}
+
+export function moverEnColaPersonalizada(indice, direccion) {
+    const nuevoIndice = indice + direccion;
+    if (nuevoIndice < 0 || nuevoIndice >= colaPersonalizada.length) return;
+    const temp = colaPersonalizada[indice];
+    colaPersonalizada[indice] = colaPersonalizada[nuevoIndice];
+    colaPersonalizada[nuevoIndice] = temp;
+}
+
+export function eliminarDeColaPersonalizada(indice) {
+    colaPersonalizada.splice(indice, 1);
+}
+
+export function vaciarColaPersonalizada() {
+    colaPersonalizada = [];
+}
+
+export function guardarSecuencia(resultadoPlan, listaProcesosUsados = []) {
     ultimaSecuenciaEjecucion = resultadoPlan.map(turno => turno.id);
     ultimoResultadoPlan = resultadoPlan;
+    ultimosProcesosEjecutados = listaProcesosUsados;
 }
 
 export function guardarResultadoMMU(resultado) {
