@@ -1,4 +1,15 @@
-import { mostrarSeccion, salir, guardarConfiguracion, actualizarTabla, renderizarTablaPaginas } from './ui.js';
+import {
+    mostrarSeccion,
+    salir,
+    guardarConfiguracion,
+    actualizarTabla,
+    renderizarTablaPaginas,
+    cambiarModoCola,
+    agregarProcesoAColaUI,
+    moverItemColaUI,
+    eliminarItemColaUI,
+    vaciarColaUI
+} from './ui.js';
 import { agregarProceso, limpiarProcesos } from './procesos.js';
 import { ejecutarPlanificador } from './planificadores.js';
 import { ejecutarMMU } from './mmu.js';
@@ -13,3 +24,8 @@ window.guardarConfiguracion = guardarConfiguracion;
 window.ejecutarMMU = ejecutarMMU;
 window.actualizarTabla = actualizarTabla;
 window.renderizarTablaPaginas = renderizarTablaPaginas;
+window.cambiarModoCola = cambiarModoCola;
+window.agregarProcesoAColaUI = agregarProcesoAColaUI;
+window.moverItemColaUI = moverItemColaUI;
+window.eliminarItemColaUI = eliminarItemColaUI;
+window.vaciarColaUI = vaciarColaUI;
