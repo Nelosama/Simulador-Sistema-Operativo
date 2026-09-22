@@ -286,6 +286,7 @@ export function mostrarSeccion(seccion) {
                         <option value="SEGUNDA_OPORTUNIDAD">Segunda Oportunidad</option>
                         <option value="MRU">MRU</option>
                         <option value="LFU">LFU</option>
+                        <option value="NRU">NRU</option>
                     </select>
                 </div>
 
@@ -323,7 +324,8 @@ export function mostrarSeccion(seccion) {
                     <option value="CLOCK">Clock</option>
                     <option value="SEGUNDA_OPORTUNIDAD">Segunda Oportunidad</option>
                     <option value="MRU">MRU</option>
-            
+                    <option value="LFU">LFU</option>
+                    <option value="NRU">NRU</option>
                 </select>
 
                 <button onclick="ejecutarMMU()">

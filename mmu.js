@@ -168,6 +168,16 @@ ultimaSecuenciaEjecucion.forEach(idProceso => {
 
         return;
     }
+    else if (algoritmo === "NRU") {
+
+        ejecutarNRU(
+            referencias,
+            cantidadMarcos,
+            resultado
+        );
+
+        return;
+    }
 
 }
 
@@ -371,6 +381,155 @@ export function ejecutarFIFO(
     mostrarResultadoMMU(
         resultado,
         "FIFO",
+        referencias,
+        cantidadMarcos,
+        pasos,
+        aciertos,
+        fallos
+    );
+}
+
+export function ejecutarNRU(
+    referencias,
+    cantidadMarcos,
+    resultado
+) {
+    // Simplificación: reinicia el bit R de todas las páginas residentes en cada fallo de página
+    // en lugar de un intervalo de reloj fijo (clock tick), ya que el curso no especifica esa frecuencia.
+    const REINICIAR_R_EN_CADA_FALLO = true;
+
+    let marcos = new Array(cantidadMarcos).fill(null);
+    let cola = [];
+    let bitsR = {};
+    // Asumir solo lecturas: Como las cadenas de referencia de este simulador no indican escrituras,
+    // el bit M (modificada) se mantiene siempre en 0. Se deja preparado por si más adelante se agregan escrituras.
+    let bitsM = {};
+    let aciertos = 0;
+    let fallos = 0;
+    let pasos = [];
+
+    referencias.forEach((pagina, indice) => {
+        const posicion = marcos.indexOf(pagina);
+
+        if (posicion !== -1) {
+            aciertos++;
+            bitsR[pagina] = 1;
+
+            pasos.push({
+                turno: indice + 1,
+                pagina: pagina,
+                resultado: "Acierto",
+                marcos: [...marcos],
+                marcoModificado: posicion,
+                tipoCambio: "hit",
+                bitsR: { ...bitsR },
+                bitsM: { ...bitsM },
+                motivo: `Página ${pagina} ya presente en el marco ${posicion + 1} (Acierto). Bit R puesto en 1.`
+            });
+        } else {
+            fallos++;
+            const marcoVacio = marcos.indexOf(null);
+
+            if (marcoVacio !== -1) {
+                marcos[marcoVacio] = pagina;
+                cola.push(pagina);
+                bitsR[pagina] = 0;
+                bitsM[pagina] = 0;
+
+                pasos.push({
+                    turno: indice + 1,
+                    pagina: pagina,
+                    resultado: "Fallo de página",
+                    marcos: [...marcos],
+                    marcoModificado: marcoVacio,
+                    tipoCambio: "carga",
+                    bitsR: { ...bitsR },
+                    bitsM: { ...bitsM },
+                    motivo: `Fallo de página. Marco ${marcoVacio + 1} estaba libre; se asigna página ${pagina} con R=0, M=0.`
+                });
+            } else {
+                const clasesEvaluadas = marcos.map(p => {
+                    const r = bitsR[p] !== undefined ? bitsR[p] : 0;
+                    const m = bitsM[p] !== undefined ? bitsM[p] : 0;
+                    const clase = (r * 2) + m;
+                    return {
+                        pagina: p,
+                        r: r,
+                        m: m,
+                        clase: clase
+                    };
+                });
+
+                let claseSeleccionada = 3;
+                for (let c of clasesEvaluadas) {
+                    if (c.clase < claseSeleccionada) {
+                        claseSeleccionada = c.clase;
+                    }
+                }
+
+                const candidatos = clasesEvaluadas.filter(c => c.clase === claseSeleccionada);
+
+                let candidatoSalida = null;
+                for (let p of cola) {
+                    if (candidatos.some(c => c.pagina === p)) {
+                        candidatoSalida = p;
+                        break;
+                    }
+                }
+
+                if (candidatoSalida === null) {
+                    candidatoSalida = candidatos[0].pagina;
+                }
+
+                const hayEmpate = candidatos.length > 1;
+                const posicionSalida = marcos.indexOf(candidatoSalida);
+
+                marcos[posicionSalida] = pagina;
+                cola = cola.filter(p => p !== candidatoSalida);
+                cola.push(pagina);
+
+                delete bitsR[candidatoSalida];
+                delete bitsM[candidatoSalida];
+                bitsR[pagina] = 0;
+                bitsM[pagina] = 0;
+
+                let motivoText = `Clases residentes: ${clasesEvaluadas.map(c => `Pág ${c.pagina}: Clase ${c.clase} (R=${c.r}, M=${c.m})`).join(", ")}. `;
+                motivoText += `Clase más baja no vacía: Clase ${claseSeleccionada}. `;
+                motivoText += `Se reemplaza la página ${candidatoSalida}`;
+                if (hayEmpate) {
+                    motivoText += ` [desempate por mayor tiempo en memoria]`;
+                }
+                motivoText += ` en el marco ${posicionSalida + 1} por la página ${pagina}.`;
+
+                pasos.push({
+                    turno: indice + 1,
+                    pagina: pagina,
+                    resultado: "Fallo de página",
+                    marcos: [...marcos],
+                    marcoModificado: posicionSalida,
+                    tipoCambio: "reemplazo",
+                    paginaSalida: candidatoSalida,
+                    paginaEntrante: pagina,
+                    bitsR: { ...bitsR },
+                    bitsM: { ...bitsM },
+                    clasesEvaluadas: clasesEvaluadas,
+                    motivo: motivoText
+                });
+            }
+
+            if (REINICIAR_R_EN_CADA_FALLO) {
+                marcos.forEach(p => {
+                    if (p !== null) {
+                        bitsR[p] = 0;
+                    }
+                });
+            }
+        }
+    });
+
+    mostrarResultadoMMU(
+        resultado,
+        "NRU (Not Recently Used)",
         referencias,
         cantidadMarcos,
         pasos,
