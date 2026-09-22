@@ -4,6 +4,7 @@ import {
     guardarConfiguracion,
     actualizarTabla,
     renderizarTablaPaginas,
+    toggleModoManualMMU,
     cambiarModoCola,
     agregarProcesoAColaUI,
     moverItemColaUI,
@@ -24,6 +25,7 @@ window.guardarConfiguracion = guardarConfiguracion;
 window.ejecutarMMU = ejecutarMMU;
 window.actualizarTabla = actualizarTabla;
 window.renderizarTablaPaginas = renderizarTablaPaginas;
+window.toggleModoManualMMU = toggleModoManualMMU;
 window.cambiarModoCola = cambiarModoCola;
 window.agregarProcesoAColaUI = agregarProcesoAColaUI;
 window.moverItemColaUI = moverItemColaUI;
