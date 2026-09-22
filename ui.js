@@ -1,4 +1,15 @@
-import { obtenerListaProcesos, configuracionSO, guardarConfiguracionSO } from './estado.js';
+import {
+    obtenerListaProcesos,
+    configuracionSO,
+    guardarConfiguracionSO,
+    colaPersonalizada,
+    usarColaPersonalizada,
+    setUsarColaPersonalizada,
+    agregarAColaPersonalizada,
+    moverEnColaPersonalizada,
+    eliminarDeColaPersonalizada,
+    vaciarColaPersonalizada
+} from './estado.js';
 
 export function actualizarTabla() {
     const tabla = document.getElementById("tablaProcesos");
@@ -192,8 +203,38 @@ export function mostrarSeccion(seccion) {
             <h2>Lista de ejecución</h2>
 
             <p class="subtitulo-seccion">
-                Seleccione el algoritmo de planificación de procesos.
+                Configure la cola de ejecución o seleccione el algoritmo de planificación de procesos.
             </p>
+
+            <div class="panel-cola-personalizada">
+                <div class="toggle-cola-contenedor">
+                    <label class="switch-label">
+                        <input type="checkbox" id="toggleUsarCola" ${usarColaPersonalizada ? "checked" : ""} onchange="cambiarModoCola(this.checked)">
+                        <strong>Usar cola personalizada</strong>
+                    </label>
+                </div>
+
+                <div id="seccionControlesCola" style="${usarColaPersonalizada ? "" : "display: none;"}">
+                    <div class="agregar-cola-controles">
+                        <div>
+                            <label>Proceso:</label>
+                            <select id="selectProcesoCola"></select>
+                        </div>
+                        <div>
+                            <label>Llegada personalizada (opcional):</label>
+                            <input type="number" id="llegadaProcesoCola" min="0" placeholder="Ej: 0" class="dato-mono">
+                        </div>
+                        <button class="boton-agregar" onclick="agregarProcesoAColaUI()">
+                            Agregar a la cola
+                        </button>
+                        <button class="boton-secundario" onclick="vaciarColaUI()">
+                            Vaciar cola
+                        </button>
+                    </div>
+
+                    <div id="listaColaVisual" class="lista-cola-visual"></div>
+                </div>
+            </div>
 
             <div class="control-planificador">
                 <select id="algoritmoPlanificador">
@@ -211,6 +252,9 @@ export function mostrarSeccion(seccion) {
 
             <div id="resultadoPlanificador"></div>
         `;
+
+        poblarSelectProcesosCola();
+        renderizarColaVisual();
     } else if (seccion === "sistema") {
         contenido.innerHTML = `
             <h2>Configuración del Sistema Operativo</h2>
@@ -295,6 +339,111 @@ export function mostrarSeccion(seccion) {
             comboMMU.value = configuracionSO.algoritmoPredeterminado;
         }
     }
+}
+
+export function cambiarModoCola(activado) {
+    setUsarColaPersonalizada(activado);
+    const seccion = document.getElementById("seccionControlesCola");
+    if (seccion) {
+        seccion.style.display = activado ? "" : "none";
+    }
+}
+
+export function poblarSelectProcesosCola() {
+    const select = document.getElementById("selectProcesoCola");
+    if (!select) return;
+
+    const procesos = obtenerListaProcesos();
+    if (procesos.length === 0) {
+        select.innerHTML = `<option value="">No hay procesos disponibles</option>`;
+        return;
+    }
+
+    let html = "";
+    procesos.forEach(p => {
+        html += `<option value="${p.id}">${p.id} — ${p.nombre} (Llegada: ${p.llegada}, Duración: ${p.duracion})</option>`;
+    });
+    select.innerHTML = html;
+}
+
+export function renderizarColaVisual() {
+    const contenedor = document.getElementById("listaColaVisual");
+    if (!contenedor) return;
+
+    if (colaPersonalizada.length === 0) {
+        contenedor.innerHTML = `<p class="texto-secundario">La cola personalizada está vacía.</p>`;
+        return;
+    }
+
+    let html = `<ul class="lista-instancias-cola">`;
+
+    colaPersonalizada.forEach((item, indice) => {
+        html += `
+            <li class="item-instancia-cola">
+                <span class="info-instancia">
+                    <strong class="dato-mono">${item.idProceso}</strong> — instancia ${item.numeroInstancia}
+                    <span class="llegada-instancia">(Llegada: <span class="dato-mono">${item.llegadaCustom !== null ? item.llegadaCustom : "Original"}</span>)</span>
+                </span>
+                <div class="acciones-instancia">
+                    <button class="boton-secundario btn-sm" onclick="moverItemColaUI(${indice}, -1)" ${indice === 0 ? "disabled" : ""}>▲</button>
+                    <button class="boton-secundario btn-sm" onclick="moverItemColaUI(${indice}, 1)" ${indice === colaPersonalizada.length - 1 ? "disabled" : ""}>▼</button>
+                    <button class="boton-secundario btn-sm btn-eliminar" onclick="eliminarItemColaUI(${indice})">✕</button>
+                </div>
+            </li>
+        `;
+    });
+
+    html += `</ul>`;
+    contenedor.innerHTML = html;
+}
+
+export function agregarProcesoAColaUI() {
+    const select = document.getElementById("selectProcesoCola");
+    if (!select || !select.value) {
+        alert("Debe seleccionar un proceso válido.");
+        return;
+    }
+
+    const idProceso = select.value;
+    const inputLlegada = document.getElementById("llegadaProcesoCola");
+    const valorLlegada = inputLlegada && inputLlegada.value !== "" ? Number(inputLlegada.value) : null;
+
+    const instanciasExistentes = colaPersonalizada.filter(item => item.idProceso === idProceso);
+    const numeroInstancia = instanciasExistentes.length + 1;
+
+    agregarAColaPersonalizada({
+        idProceso: idProceso,
+        numeroInstancia: numeroInstancia,
+        llegadaCustom: valorLlegada
+    });
+
+    if (inputLlegada) {
+        inputLlegada.value = "";
+    }
+
+    renderizarColaVisual();
+}
+
+export function moverItemColaUI(indice, direccion) {
+    moverEnColaPersonalizada(indice, direccion);
+    renderizarColaVisual();
+}
+
+export function eliminarItemColaUI(indice) {
+    eliminarDeColaPersonalizada(indice);
+
+    const conteos = {};
+    colaPersonalizada.forEach(item => {
+        conteos[item.idProceso] = (conteos[item.idProceso] || 0) + 1;
+        item.numeroInstancia = conteos[item.idProceso];
+    });
+
+    renderizarColaVisual();
+}
+
+export function vaciarColaUI() {
+    vaciarColaPersonalizada();
+    renderizarColaVisual();
 }
 
 export function salir() {

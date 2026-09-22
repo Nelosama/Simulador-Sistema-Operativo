@@ -1,4 +1,4 @@
-import { obtenerListaProcesos, guardarSecuencia, configuracionSO } from "./estado.js";
+import { obtenerListaProcesos, guardarSecuencia, configuracionSO, usarColaPersonalizada, colaPersonalizada } from "./estado.js";
 
 export function ejecutarPlanificador() {
 
@@ -9,17 +9,64 @@ export function ejecutarPlanificador() {
         document.getElementById("resultadoPlanificador");
 
 
-    const procesos = obtenerListaProcesos();
+    const procesosBase = obtenerListaProcesos();
 
-    if (procesos.length === 0) {
+    if (procesosBase.length === 0) {
 
         resultado.innerHTML = `
             <p class="mensaje-error">
-                Primero debe agregar procesos.
+                Primero debe agregar procesos en "Configuración de programas".
             </p>
         `;
 
         return;
+    }
+
+    let procesos = [];
+
+    if (usarColaPersonalizada) {
+        if (colaPersonalizada.length === 0) {
+            resultado.innerHTML = `
+                <p class="mensaje-error">
+                    La cola personalizada está vacía. Agregue instancias de procesos a la cola.
+                </p>
+            `;
+            return;
+        }
+
+        const mapaProcesosBase = {};
+        procesosBase.forEach(p => {
+            mapaProcesosBase[p.id] = p;
+        });
+
+        procesos = colaPersonalizada.map(item => {
+            const original = mapaProcesosBase[item.idProceso];
+            if (!original) return null;
+
+            const llegadaInstancia = (item.llegadaCustom !== null && item.llegadaCustom !== undefined)
+                ? item.llegadaCustom
+                : original.llegada;
+
+            return {
+                ...original,
+                id: `${original.id}#${item.numeroInstancia}`,
+                nombre: `${original.nombre} (${original.id}#${item.numeroInstancia})`,
+                llegada: llegadaInstancia,
+                idOriginal: original.id,
+                instanciaNum: item.numeroInstancia
+            };
+        }).filter(p => p !== null);
+
+        if (procesos.length === 0) {
+            resultado.innerHTML = `
+                <p class="mensaje-error">
+                    No se encontraron los procesos seleccionados en la cola personalizada.
+                </p>
+            `;
+            return;
+        }
+    } else {
+        procesos = [...procesosBase];
     }
 
 
@@ -63,7 +110,7 @@ export function ejecutarPlanificador() {
 
         });
 
-        guardarSecuencia(resultadoPlan);
+        guardarSecuencia(resultadoPlan, procesos);
         mostrarResultadoPlanificacion(
             resultadoPlan,
             "FCFS"
@@ -135,7 +182,7 @@ export function ejecutarPlanificador() {
 
         }
 
-        guardarSecuencia(resultadoPlan);
+        guardarSecuencia(resultadoPlan, procesos);
         mostrarResultadoPlanificacion(
             resultadoPlan,
             "SJF"
@@ -269,7 +316,7 @@ export function ejecutarPlanificador() {
 
         }
 
-        guardarSecuencia(resultadoPlan);
+        guardarSecuencia(resultadoPlan, procesos);
         mostrarResultadoRoundRobin(
             resultadoPlan,
             quantum
@@ -354,7 +401,7 @@ export function ejecutarPlanificador() {
 
         }
 
-        guardarSecuencia(resultadoPlan);
+        guardarSecuencia(resultadoPlan, procesos);
         mostrarResultadoPrioridad(
             resultadoPlan
         );
@@ -456,7 +503,7 @@ else if (algoritmo === "SORTEO") {
 
     }
 
-    guardarSecuencia(resultadoPlan);
+    guardarSecuencia(resultadoPlan, procesos);
     mostrarResultadoSorteo(
         resultadoPlan
     );

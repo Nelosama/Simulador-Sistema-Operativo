@@ -1,4 +1,4 @@
-import { obtenerListaProcesos, ultimaSecuenciaEjecucion, configuracionSO, guardarResultadoMMU, ultimoResultadoPlan } from "./estado.js";
+import { obtenerListaProcesos, ultimaSecuenciaEjecucion, ultimosProcesosEjecutados, configuracionSO, guardarResultadoMMU, ultimoResultadoPlan } from "./estado.js";
 
 export function ejecutarMMU() {
 
@@ -59,15 +59,19 @@ if (ultimaSecuenciaEjecucion.length === 0) {
 }
 
 
+const listaProcesosUso = (ultimosProcesosEjecutados && ultimosProcesosEjecutados.length > 0)
+    ? ultimosProcesosEjecutados
+    : procesos;
+
 const mapaProcesos = {};
-procesos.forEach(p => {
+listaProcesosUso.forEach(p => {
     mapaProcesos[p.id] = p;
 });
 
 let contadorPaginaGlobal = 1;
 const paginasPorProceso = {};
 
-procesos.forEach(p => {
+listaProcesosUso.forEach(p => {
     const cantidadPaginas = p.paginasRequeridas || 1;
     const listaPaginasProc = [];
     for (let k = 0; k < cantidadPaginas; k++) {
