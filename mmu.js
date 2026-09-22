@@ -413,31 +413,68 @@ export function ejecutarFIFO(
     );
 }
 
+// Esta función implementa la interpretación del criterio de clasificación NRU explicado en clase.
+//
+// Estado por página residente:
+// - recienCargada: true solo para la página cargada en el ÚLTIMO fallo resuelto.
+// - fueReferenciada: true si la página recibió al menos un acierto (hit) desde que fue cargada.
+//
+// Clasificación al reemplazar:
+// - Clase 3: recienCargada === true
+// - Clase 2: recienCargada === false && fueReferenciada === true
+// - Clase 0: recienCargada === false && fueReferenciada === false
+// - Clase 1: NO SE USA en esta implementación (queda sin definir por falta de aclaración del criterio de terminación).
 export function ejecutarNRU(
     referencias,
     cantidadMarcos,
     resultado
 ) {
-    // Simplificación: reinicia el bit R de todas las páginas residentes en cada fallo de página
-    // en lugar de un intervalo de reloj fijo (clock tick), ya que el curso no especifica esa frecuencia.
-    const REINICIAR_R_EN_CADA_FALLO = true;
-
     let marcos = new Array(cantidadMarcos).fill(null);
     let cola = [];
-    let bitsR = {};
-    // Asumir solo lecturas: Como las cadenas de referencia de este simulador no indican escrituras,
-    // el bit M (modificada) se mantiene siempre en 0. Se deja preparado por si más adelante se agregan escrituras.
-    let bitsM = {};
+    let recienCargada = {};
+    let fueReferenciada = {};
     let aciertos = 0;
     let fallos = 0;
     let pasos = [];
 
-    referencias.forEach((pagina, indice) => {
+    referencias.forEach((token, indice) => {
+        const esTerminacion = /^[A-Z]T$/.test(token);
+
+        if (esTerminacion) {
+            const idProceso = token.slice(0, -1);
+            let paginasLiberadas = [];
+
+            marcos.forEach((p, idx) => {
+                if (p !== null && p.startsWith(idProceso)) {
+                    paginasLiberadas.push(p);
+                    marcos[idx] = null;
+                }
+            });
+
+            cola = cola.filter(p => !paginasLiberadas.includes(p));
+            paginasLiberadas.forEach(p => {
+                delete recienCargada[p];
+                delete fueReferenciada[p];
+            });
+
+            pasos.push({
+                turno: indice + 1,
+                pagina: token,
+                resultado: "Terminación",
+                marcos: [...marcos],
+                marcoModificado: -1,
+                tipoCambio: "normal",
+                motivo: `Finaliza proceso ${idProceso} (${token}). Se liberan los marcos ocupados por sus páginas.`
+            });
+            return;
+        }
+
+        const pagina = token;
         const posicion = marcos.indexOf(pagina);
 
         if (posicion !== -1) {
             aciertos++;
-            bitsR[pagina] = 1;
+            fueReferenciada[pagina] = true;
 
             pasos.push({
                 turno: indice + 1,
@@ -446,9 +483,9 @@ export function ejecutarNRU(
                 marcos: [...marcos],
                 marcoModificado: posicion,
                 tipoCambio: "hit",
-                bitsR: { ...bitsR },
-                bitsM: { ...bitsM },
-                motivo: `Página ${pagina} ya presente en el marco ${posicion + 1} (Acierto). Bit R puesto en 1.`
+                recienCargada: { ...recienCargada },
+                fueReferenciada: { ...fueReferenciada },
+                motivo: `Página ${pagina} ya presente en el marco ${posicion + 1} (Acierto). fueReferenciada puesta en true.`
             });
         } else {
             fallos++;
@@ -457,8 +494,14 @@ export function ejecutarNRU(
             if (marcoVacio !== -1) {
                 marcos[marcoVacio] = pagina;
                 cola.push(pagina);
-                bitsR[pagina] = 0;
-                bitsM[pagina] = 0;
+
+                marcos.forEach(p => {
+                    if (p !== null) {
+                        recienCargada[p] = false;
+                    }
+                });
+                recienCargada[pagina] = true;
+                fueReferenciada[pagina] = false;
 
                 pasos.push({
                     turno: indice + 1,
@@ -467,28 +510,31 @@ export function ejecutarNRU(
                     marcos: [...marcos],
                     marcoModificado: marcoVacio,
                     tipoCambio: "carga",
-                    bitsR: { ...bitsR },
-                    bitsM: { ...bitsM },
-                    motivo: `Fallo de página. Marco ${marcoVacio + 1} estaba libre; se asigna página ${pagina} con R=0, M=0.`
+                    recienCargada: { ...recienCargada },
+                    fueReferenciada: { ...fueReferenciada },
+                    motivo: `Fallo de página. Marco ${marcoVacio + 1} estaba libre; se asigna página ${pagina} (reciénCargada=true, fueReferenciada=false).`
                 });
             } else {
                 const clasesEvaluadas = marcos.map(p => {
-                    const r = bitsR[p] !== undefined ? bitsR[p] : 0;
-                    const m = bitsM[p] !== undefined ? bitsM[p] : 0;
-                    const clase = (r * 2) + m;
+                    let clase;
+                    if (recienCargada[p] === true) {
+                        clase = 3;
+                    } else if (fueReferenciada[p] === true) {
+                        clase = 2;
+                    } else {
+                        clase = 0;
+                    }
                     return {
                         pagina: p,
-                        r: r,
-                        m: m,
                         clase: clase
                     };
                 });
 
                 let claseSeleccionada = 3;
-                for (let c of clasesEvaluadas) {
-                    if (c.clase < claseSeleccionada) {
-                        claseSeleccionada = c.clase;
-                    }
+                if (clasesEvaluadas.some(c => c.clase === 0)) {
+                    claseSeleccionada = 0;
+                } else if (clasesEvaluadas.some(c => c.clase === 2)) {
+                    claseSeleccionada = 2;
                 }
 
                 const candidatos = clasesEvaluadas.filter(c => c.clase === claseSeleccionada);
@@ -512,16 +558,22 @@ export function ejecutarNRU(
                 cola = cola.filter(p => p !== candidatoSalida);
                 cola.push(pagina);
 
-                delete bitsR[candidatoSalida];
-                delete bitsM[candidatoSalida];
-                bitsR[pagina] = 0;
-                bitsM[pagina] = 0;
+                delete recienCargada[candidatoSalida];
+                delete fueReferenciada[candidatoSalida];
 
-                let motivoText = `Clases residentes: ${clasesEvaluadas.map(c => `Pág ${c.pagina}: Clase ${c.clase} (R=${c.r}, M=${c.m})`).join(", ")}. `;
+                marcos.forEach(p => {
+                    if (p !== null) {
+                        recienCargada[p] = false;
+                    }
+                });
+                recienCargada[pagina] = true;
+                fueReferenciada[pagina] = false;
+
+                let motivoText = `Clases residentes: ${clasesEvaluadas.map(c => `Pág ${c.pagina}: Clase ${c.clase}`).join(", ")}. `;
                 motivoText += `Clase más baja no vacía: Clase ${claseSeleccionada}. `;
                 motivoText += `Se reemplaza la página ${candidatoSalida}`;
                 if (hayEmpate) {
-                    motivoText += ` [desempate por mayor tiempo en memoria]`;
+                    motivoText += ` [desempate por antigüedad en memoria]`;
                 }
                 motivoText += ` en el marco ${posicionSalida + 1} por la página ${pagina}.`;
 
@@ -534,18 +586,10 @@ export function ejecutarNRU(
                     tipoCambio: "reemplazo",
                     paginaSalida: candidatoSalida,
                     paginaEntrante: pagina,
-                    bitsR: { ...bitsR },
-                    bitsM: { ...bitsM },
+                    recienCargada: { ...recienCargada },
+                    fueReferenciada: { ...fueReferenciada },
                     clasesEvaluadas: clasesEvaluadas,
                     motivo: motivoText
-                });
-            }
-
-            if (REINICIAR_R_EN_CADA_FALLO) {
-                marcos.forEach(p => {
-                    if (p !== null) {
-                        bitsR[p] = 0;
-                    }
                 });
             }
         }
@@ -553,7 +597,7 @@ export function ejecutarNRU(
 
     mostrarResultadoMMU(
         resultado,
-        "NRU (Not Recently Used)",
+        "NRU (Criterio de Clase)",
         referencias,
         cantidadMarcos,
         pasos,
