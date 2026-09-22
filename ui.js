@@ -316,6 +316,20 @@ export function mostrarSeccion(seccion) {
                 Seleccione el algoritmo de paginación:
             </p>
 
+            <div class="panel-cola-personalizada" style="margin-bottom: 20px;">
+                <div class="toggle-cola-contenedor">
+                    <label class="switch-label">
+                        <input type="checkbox" id="modoManualMMU" onchange="toggleModoManualMMU(this.checked)">
+                        <strong>Ingresar referencias manualmente</strong>
+                    </label>
+                </div>
+
+                <div id="contenedorReferenciasManual" style="display: none; margin-top: 12px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: #6B6B6B; margin-bottom: 6px;">Referencias de página (separadas por coma):</label>
+                    <textarea id="referenciasManualMMU" placeholder="A0, B8, C3, D0, A0, B3, AT, C4..."></textarea>
+                </div>
+            </div>
+
             <div class="control-planificador">
                 <select id="algoritmoMMU">
                     <option value="FIFO">FIFO</option>
@@ -340,6 +354,13 @@ export function mostrarSeccion(seccion) {
         if (comboMMU && configuracionSO.algoritmoPredeterminado) {
             comboMMU.value = configuracionSO.algoritmoPredeterminado;
         }
+    }
+}
+
+export function toggleModoManualMMU(activado) {
+    const contenedor = document.getElementById("contenedorReferenciasManual");
+    if (contenedor) {
+        contenedor.style.display = activado ? "block" : "none";
     }
 }
 

@@ -9,20 +9,6 @@ export function ejecutarMMU() {
         document.getElementById("resultadoMMU");
 
 
-    const procesos = obtenerListaProcesos();
-
-    if (procesos.length === 0) {
-
-        resultado.innerHTML = `
-            <p class="mensaje-error">
-                Primero debe agregar procesos.
-            </p>
-        `;
-
-        return;
-    }
-
-
     const cantidadMarcos =
         configuracionSO.marcosFisicos;
 
@@ -39,64 +25,102 @@ export function ejecutarMMU() {
     }
 
 
-let referencias = [];
+    let referencias = [];
 
+    const elementoManual = document.getElementById("modoManualMMU");
+    const esModoManual = elementoManual ? elementoManual.checked : false;
 
-if (ultimaSecuenciaEjecucion.length === 0) {
+    if (esModoManual) {
+        const elementoTexto = document.getElementById("referenciasManualMMU");
+        const textoManual = elementoTexto ? elementoTexto.value : "";
+        const tokensManuales = textoManual
+            .split(",")
+            .map(t => t.trim().toUpperCase())
+            .filter(t => t.length > 0);
 
-    resultado.innerHTML = `
+        const patronValido = /^[A-Z]([0-9]+|T)$/;
+        const esValido = tokensManuales.length > 0 && tokensManuales.every(t => patronValido.test(t));
 
-        <p class="mensaje-error">
-
-            Primero debe ejecutar un algoritmo
-            de planificación.
-
-        </p>
-
-    `;
-
-    return;
-}
-
-
-const listaProcesosUso = (ultimosProcesosEjecutados && ultimosProcesosEjecutados.length > 0)
-    ? ultimosProcesosEjecutados
-    : procesos;
-
-const mapaProcesos = {};
-listaProcesosUso.forEach(p => {
-    mapaProcesos[p.id] = p;
-});
-
-let contadorPaginaGlobal = 1;
-const paginasPorProceso = {};
-
-listaProcesosUso.forEach(p => {
-    const cantidadPaginas = p.paginasRequeridas || 1;
-    const listaPaginasProc = [];
-    for (let k = 0; k < cantidadPaginas; k++) {
-        let pagAsignada = ((contadorPaginaGlobal - 1) % configuracionSO.paginasVirtuales) + 1;
-        listaPaginasProc.push(pagAsignada);
-        contadorPaginaGlobal++;
-    }
-    paginasPorProceso[p.id] = listaPaginasProc;
-});
-
-ultimaSecuenciaEjecucion.forEach(idProceso => {
-    const paginasAsignadas = paginasPorProceso[idProceso];
-    if (paginasAsignadas && paginasAsignadas.length > 0) {
-        paginasAsignadas.forEach(numPagina => {
-            referencias.push(numPagina);
-        });
-    } else {
-        const proc = mapaProcesos[idProceso];
-        const cantidadPaginas = proc && proc.paginasRequeridas ? proc.paginasRequeridas : 1;
-        for (let k = 1; k <= cantidadPaginas; k++) {
-            let numPagina = ((k - 1) % configuracionSO.paginasVirtuales) + 1;
-            referencias.push(numPagina);
+        if (!esValido) {
+            resultado.innerHTML = `
+                <p class="mensaje-error">
+                    Ingrese referencias válidas en el formato correcto (ejemplo: A0, B8, AT).
+                </p>
+            `;
+            return;
         }
+
+        referencias = tokensManuales;
+    } else {
+        const procesos = obtenerListaProcesos();
+
+        if (procesos.length === 0) {
+
+            resultado.innerHTML = `
+                <p class="mensaje-error">
+                    Primero debe agregar procesos.
+                </p>
+            `;
+
+            return;
+        }
+
+        if (ultimaSecuenciaEjecucion.length === 0) {
+
+            resultado.innerHTML = `
+
+                <p class="mensaje-error">
+
+                    Primero debe ejecutar un algoritmo
+                    de planificación.
+
+                </p>
+
+            `;
+
+            return;
+        }
+
+
+        const listaProcesosUso = (ultimosProcesosEjecutados && ultimosProcesosEjecutados.length > 0)
+            ? ultimosProcesosEjecutados
+            : procesos;
+
+        const mapaProcesos = {};
+        listaProcesosUso.forEach(p => {
+            mapaProcesos[p.id] = p;
+        });
+
+        let contadorPaginaGlobal = 1;
+        const paginasPorProceso = {};
+
+        listaProcesosUso.forEach(p => {
+            const cantidadPaginas = p.paginasRequeridas || 1;
+            const listaPaginasProc = [];
+            for (let k = 0; k < cantidadPaginas; k++) {
+                let pagAsignada = ((contadorPaginaGlobal - 1) % configuracionSO.paginasVirtuales) + 1;
+                listaPaginasProc.push(pagAsignada);
+                contadorPaginaGlobal++;
+            }
+            paginasPorProceso[p.id] = listaPaginasProc;
+        });
+
+        ultimaSecuenciaEjecucion.forEach(idProceso => {
+            const paginasAsignadas = paginasPorProceso[idProceso];
+            if (paginasAsignadas && paginasAsignadas.length > 0) {
+                paginasAsignadas.forEach(numPagina => {
+                    referencias.push(numPagina);
+                });
+            } else {
+                const proc = mapaProcesos[idProceso];
+                const cantidadPaginas = proc && proc.paginasRequeridas ? proc.paginasRequeridas : 1;
+                for (let k = 1; k <= cantidadPaginas; k++) {
+                    let numPagina = ((k - 1) % configuracionSO.paginasVirtuales) + 1;
+                    referencias.push(numPagina);
+                }
+            }
+        });
     }
-});
 
     if (algoritmo === "FIFO") {
 
